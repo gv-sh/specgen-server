@@ -26,6 +26,22 @@ jest.mock('../services/aiService', () => ({
           prompt: "Test prompt for image generation"
         }
       };
+    } else if (type === 'combined') {
+      return {
+        success: true,
+        content: "This is a test story with mocked content for combined mode.",
+        imageData: mockImageData,
+        metadata: {
+          fiction: {
+            model: "gpt-4o-mini-mock",
+            tokens: 100
+          },
+          image: {
+            model: "dall-e-3-mock",
+            prompt: "Test prompt for image generation"
+          }
+        }
+      };
     }
     return { success: false, error: "Unsupported content type" };
   })
@@ -273,5 +289,40 @@ describe('Generation API Tests', () => {
     expect(response.body).toHaveProperty('success', false);
     expect(response.body).toHaveProperty('error');
     expect(response.body.error).toContain('Content type must be either');
+    expect(response.body.error).toContain('fiction');
+    expect(response.body.error).toContain('image');
+    expect(response.body.error).toContain('combined');
+  });
+
+  test('POST /api/generate - Should generate combined content when requested', async () => {
+    const requestPayload = {
+      parameterValues: {
+        [category.id]: {
+          [parameters.dropdown.id]: parameters.dropdown.values[0].label,
+          [parameters.slider.id]: 50
+        }
+      },
+      contentType: 'combined'
+    };
+      
+    const response = await request.post('/api/generate').send(requestPayload);
+    
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('success', true);
+    expect(response.body).toHaveProperty('content');
+    expect(response.body).toHaveProperty('imageData');
+    expect(response.body).toHaveProperty('metadata');
+    
+    // Check for nested metadata structure specific to combined mode
+    expect(response.body.metadata).toHaveProperty('fiction');
+    expect(response.body.metadata).toHaveProperty('image');
+    expect(response.body.metadata.fiction).toHaveProperty('model');
+    expect(response.body.metadata.fiction).toHaveProperty('tokens');
+    expect(response.body.metadata.image).toHaveProperty('model');
+    expect(response.body.metadata.image).toHaveProperty('prompt');
+    
+    // Check that both content and image are present
+    expect(response.body.content).toBeTruthy();
+    expect(response.body.imageData).toBeTruthy();
   });
 });

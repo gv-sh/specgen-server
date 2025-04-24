@@ -19,9 +19,9 @@ class AIService {
   }
 
   /**
-   * Generate content based on provided parameters and type (fiction or image)
+   * Generate content based on provided parameters and type (fiction, image, or combined)
    * @param {Object} parameters - User-selected parameters for generation
-   * @param {String} type - Type of content to generate ('fiction' or 'image')
+   * @param {String} type - Type of content to generate ('fiction', 'image', or 'combined')
    * @returns {Promise<Object>} - Generated content from OpenAI
    */
   async generateContent(parameters, type = 'fiction') {
@@ -31,6 +31,8 @@ class AIService {
         return this.generateFiction(parameters);
       } else if (type === 'image') {
         return this.generateImage(parameters);
+      } else if (type === 'combined') {
+        return this.generateCombined(parameters);
       } else {
         throw new Error(`Unsupported generation type: ${type}`);
       }
@@ -251,6 +253,48 @@ class AIService {
     prompt += "\nUse high-quality, photorealistic rendering with attention to lighting, detail, and composition. The image should be visually cohesive and striking.";
     
     return prompt;
+  }
+
+  /**
+   * Generate both fiction and image content based on the same parameters
+   * @param {Object} parameters - User-selected parameters for generation
+   * @returns {Promise<Object>} - Generated fiction and image content from OpenAI
+   */
+  async generateCombined(parameters) {
+    try {
+      // First generate the fiction content
+      const fictionResult = await this.generateFiction(parameters);
+      
+      if (!fictionResult.success) {
+        return fictionResult; // Return early if fiction generation failed
+      }
+      
+      // Then generate the image based on the same parameters
+      const imageResult = await this.generateImage(parameters);
+      
+      if (!imageResult.success) {
+        return imageResult; // Return early if image generation failed
+      }
+      
+      // Combine the results
+      return {
+        success: true,
+        content: fictionResult.content,
+        imageData: imageResult.imageData,
+        metadata: {
+          fiction: fictionResult.metadata,
+          image: imageResult.metadata
+        }
+      };
+    } catch (error) {
+      console.error('Error in combined generation:', 
+        error.response ? JSON.stringify(error.response.data, null, 2) : error.message
+      );
+      return {
+        success: false,
+        error: error.response ? error.response.data.error.message : error.message
+      };
+    }
   }
 }
 

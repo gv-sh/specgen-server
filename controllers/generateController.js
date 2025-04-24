@@ -122,10 +122,10 @@ const generateController = {
       const { parameterValues, contentType = defaultContentType, title } = req.body;
 
       // Validate content type
-      if (contentType !== 'fiction' && contentType !== 'image') {
+      if (contentType !== 'fiction' && contentType !== 'image' && contentType !== 'combined') {
         return res.status(400).json({
           success: false,
-          error: 'Content type must be either "fiction" or "image"'
+          error: 'Content type must be either "fiction", "image", or "combined"'
         });
       }
 
@@ -199,12 +199,12 @@ const generateController = {
         // Structure response based on generation type
         const responseData = {
           success: true,
-          content: contentType === 'fiction' ? result.content : undefined,
+          content: contentType === 'fiction' || contentType === 'combined' ? result.content : undefined,
           metadata: result.metadata
         };
 
-        // For image content, convert binary to base64 for JSON response
-        if (contentType === 'image' && result.imageData) {
+        // For image or combined content, convert binary to base64 for JSON response
+        if ((contentType === 'image' || contentType === 'combined') && result.imageData) {
           responseData.imageData = result.imageData.toString('base64');
         }
 
@@ -213,10 +213,10 @@ const generateController = {
           title: title || undefined,
           type: contentType,
           parameterValues: parameterValues,
-          // For fiction content
-          content: contentType === 'fiction' ? result.content : undefined,
-          // For image content - store as binary
-          imageData: contentType === 'image' ? result.imageData : undefined,
+          // For fiction or combined content
+          content: contentType === 'fiction' || contentType === 'combined' ? result.content : undefined,
+          // For image or combined content - store as binary
+          imageData: contentType === 'image' || contentType === 'combined' ? result.imageData : undefined,
           metadata: result.metadata
         };
 

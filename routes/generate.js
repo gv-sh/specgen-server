@@ -33,8 +33,8 @@ const generateController = require('../controllers/generateController');
  *               "fantasy-mythical-creatures": ["Dragons", "Elves"]
  *         contentType:
  *           type: string
- *           description: Type of content to generate ('fiction' or 'image')
- *           enum: [fiction, image]
+ *           description: Type of content to generate ('fiction', 'image', or 'combined')
+ *           enum: [fiction, image, combined]
  *           default: fiction
  *       required:
  *         - parameterValues
@@ -48,19 +48,19 @@ const generateController = require('../controllers/generateController');
  *           example: true
  *         content:
  *           type: string
- *           description: Generated story content (only provided for fiction type)
+ *           description: Generated story content (only provided for fiction or combined type)
  *           example: "The starship Nebula drifted silently through the endless void of space..."
- *         imageUrl:
+ *         imageData:
  *           type: string
- *           description: URL to the generated image (only provided for image type)
- *           example: "https://example.com/generated-image.jpg"
+ *           description: Base64-encoded image data (only provided for image or combined type)
+ *           example: "iVBORw0KGgoAAAANSUhEUgAA..."
  *         metadata:
  *           type: object
  *           properties:
  *             model:
  *               type: string
- *               description: The AI model used for generation
- *               example: "gpt-3.5-turbo"
+ *               description: The AI model used for generation (for fiction or image type)
+ *               example: "gpt-4o-mini"
  *             tokens:
  *               type: integer
  *               description: Total tokens used for this generation (for fiction type)
@@ -69,6 +69,26 @@ const generateController = require('../controllers/generateController');
  *               type: string
  *               description: Prompt used for image generation (for image type)
  *               example: "A futuristic city with flying vehicles..."
+ *             fiction:
+ *               type: object
+ *               description: Fiction generation metadata (for combined type)
+ *               properties:
+ *                 model:
+ *                   type: string
+ *                   example: "gpt-4o-mini"
+ *                 tokens:
+ *                   type: integer
+ *                   example: 1250
+ *             image:
+ *               type: object
+ *               description: Image generation metadata (for combined type)
+ *               properties:
+ *                 model:
+ *                   type: string
+ *                   example: "dall-e-3"
+ *                 prompt:
+ *                   type: string
+ *                   example: "A fantasy landscape with dragons and elves..."
  *       required:
  *         - success
  *         - metadata
@@ -111,9 +131,9 @@ const generateController = require('../controllers/generateController');
  *                 description: Map of category IDs to parameter selections
  *               contentType:
  *                 type: string
- *                 enum: [fiction, image]
+ *                 enum: [fiction, image, combined]
  *                 default: fiction
- *                 description: Type of content to generate
+ *                 description: Type of content to generate ('fiction', 'image', or 'combined')
  *           examples:
  *             fictionGeneration:
  *               summary: Fiction generation request
@@ -132,6 +152,14 @@ const generateController = require('../controllers/generateController');
  *                     "fantasy-magic-system": "Elemental"
  *                     "fantasy-mythical-creatures": ["Dragons", "Elves"]
  *                 contentType: "image"
+ *             combinedGeneration:
+ *               summary: Combined fiction and image generation request
+ *               value:
+ *                 parameterValues:
+ *                   "fantasy":
+ *                     "fantasy-magic-system": "Elemental"
+ *                     "fantasy-mythical-creatures": ["Dragons", "Elves"]
+ *                 contentType: "combined"
  *     responses:
  *       200:
  *         description: Content generated successfully
