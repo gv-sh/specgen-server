@@ -1,4 +1,5 @@
-// tests/parameters.test.js
+/* global describe, test, expect, beforeAll */
+
 const { request, createTestCategory, cleanDatabase, initDatabase } = require('./setup');
 
 describe('Parameter API Tests', () => {

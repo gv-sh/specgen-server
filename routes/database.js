@@ -1,3 +1,4 @@
+/* global process */
 const express = require('express');
 const router = express.Router();
 const databaseService = require('../services/databaseService');
@@ -54,7 +55,7 @@ router.post('/restore', upload.single('file'), async (req, res) => {
     
     try {
       data = JSON.parse(fileContent);
-    } catch (err) {
+    } catch {
       // Clean up the uploaded file
       await fs.unlink(req.file.path);
       

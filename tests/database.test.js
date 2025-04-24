@@ -1,3 +1,5 @@
+/* global describe, test, expect, beforeEach, beforeAll, jest */
+
 const { request, cleanDatabase, initDatabase } = require('./setup');
 const fs = require('fs').promises;
 const path = require('path');
@@ -112,6 +114,7 @@ describe('Database API Tests', () => {
 
   test('POST /api/database/restore - Should reject restore with invalid database structure', async () => {
     // Prepare a temporary file with invalid database structure
+    // eslint-disable-next-line no-undef
     const tempFilePath = path.join(__dirname, 'invalid-structure.json');
     await fs.writeFile(tempFilePath, JSON.stringify({
       invalid: 'structure'

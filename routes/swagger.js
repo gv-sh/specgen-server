@@ -8,7 +8,7 @@ const swaggerSpec = require('../swagger');
 router.use('/', swaggerUi.serve);
 router.get('/', swaggerUi.setup(swaggerSpec, {
   explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }'
+  customCss: '.swagger-ui .topbar { displayx: none }'
 }));
 
 // API documentation in JSON format

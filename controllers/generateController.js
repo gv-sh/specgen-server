@@ -16,7 +16,7 @@ function validateParameterValue(parameter, value) {
   }
 
   switch (parameter.type) {
-    case 'Dropdown':
+    case 'Dropdown': {
       // Ensure values array exists and is populated
       if (!parameter.values || !Array.isArray(parameter.values) || parameter.values.length === 0) {
         console.error('Invalid dropdown configuration');
@@ -30,8 +30,9 @@ function validateParameterValue(parameter, value) {
         return `Value "${value}" is not valid for dropdown parameter "${parameter.name}"`;
       }
       break;
+    }
 
-    case 'Slider':
+    case 'Slider': {
       const numValue = Number(value);
       if (isNaN(numValue)) {
         return `Value for slider parameter "${parameter.name}" must be a number`;
@@ -40,23 +41,21 @@ function validateParameterValue(parameter, value) {
       const min = parameter.config?.min || 0;
       const max = parameter.config?.max || 100;
 
-
-
       if (numValue < min || numValue > max) {
         return `Value ${value} is outside the range [${min}-${max}] for slider parameter "${parameter.name}"`;
       }
       break;
+    }
 
-    case 'Toggle Switch':
+    case 'Toggle Switch': {
       const isBooleanToggle = typeof value === 'boolean';
-
-
       if (!isBooleanToggle) {
         return `Value for toggle parameter "${parameter.name}" must be a boolean`;
       }
       break;
+    }
 
-    case 'Radio Buttons':
+    case 'Radio Buttons': {
       // Ensure values array exists and is populated
       if (!parameter.values || !Array.isArray(parameter.values) || parameter.values.length === 0) {
         return `Invalid radio buttons configuration for parameter "${parameter.name}"`;
@@ -64,31 +63,33 @@ function validateParameterValue(parameter, value) {
 
       const isValidRadio = parameter.values.some(v => v.label === value);
 
-
       if (!isValidRadio) {
         return `Value "${value}" is not valid for radio parameter "${parameter.name}"`;
       }
       break;
+    }
 
     case 'Checkbox':
-      if (!Array.isArray(value)) {
-        return `Value for checkbox parameter "${parameter.name}" must be an array`;
-      }
+      {
+        if (!Array.isArray(value)) {
+          return `Value for checkbox parameter "${parameter.name}" must be an array`;
+        }
 
-      // Ensure values array exists and is populated
-      if (!parameter.values || !Array.isArray(parameter.values) || parameter.values.length === 0) {
-        return `Invalid checkbox configuration for parameter "${parameter.name}"`;
-      }
+        // Ensure values array exists and is populated
+        if (!parameter.values || !Array.isArray(parameter.values) || parameter.values.length === 0) {
+          return `Invalid checkbox configuration for parameter "${parameter.name}"`;
+        }
 
-      // Check if all selected values are valid
-      const invalidValues = value.filter(item =>
-        !parameter.values.some(v => v.label === item)
-      );
+        // Check if all selected values are valid
+        const invalidValues = value.filter(item =>
+          !parameter.values.some(v => v.label === item)
+        );
 
-      if (invalidValues.length > 0) {
-        return `Values ${invalidValues.join(', ')} are not valid for checkbox parameter "${parameter.name}"`;
+        if (invalidValues.length > 0) {
+          return `Values ${invalidValues.join(', ')} are not valid for checkbox parameter "${parameter.name}"`;
+        }
+        break;
       }
-      break;
 
     default:
       return `Unknown parameter type: ${parameter.type}`;

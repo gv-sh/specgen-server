@@ -6,7 +6,7 @@ const axios = require('axios');
  */
 class AIService {
   constructor() {
-    this.apiKey = process.env.OPENAI_API_KEY;
+    this.apiKey = globalThis.process?.env?.OPENAI_API_KEY;
     this.baseUrl = 'https://api.openai.com/v1';
     this.chatCompletionUrl = `${this.baseUrl}/chat/completions`;
     this.imageGenerationUrl = `${this.baseUrl}/images/generations`;

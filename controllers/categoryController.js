@@ -181,7 +181,7 @@ const categoryController = {
       const parameters = await databaseService.getParametersByCategoryId(id);
       
       // Perform the deletion (this will also delete associated parameters)
-      const deleted = await databaseService.deleteCategory(id);
+      await databaseService.deleteCategory(id);
       
       res.status(200).json({
         success: true,

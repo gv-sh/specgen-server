@@ -1,4 +1,5 @@
-// tests/setup.js
+/* global beforeAll, afterAll, jest */
+
 jest.mock('../swagger');
 const app = require('../index');
 const supertest = require('supertest');
@@ -9,7 +10,9 @@ const fs = require('fs').promises;
 const request = supertest(app);
 
 // Database file paths
+// eslint-disable-next-line no-undef
 const DATABASE_PATH = path.join(__dirname, '../data/database.json');
+// eslint-disable-next-line no-undef
 const TEST_DATABASE_PATH = path.join(__dirname, '../data/test-database.json');
 
 // Initialize the database file with empty structure

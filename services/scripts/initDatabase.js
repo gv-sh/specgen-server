@@ -1,7 +1,7 @@
-// server/scripts/initDatabase.js
 const fs = require('fs-extra');
 const path = require('path');
 
+// eslint-disable-next-line no-undef
 const DATABASE_PATH = path.join(__dirname, '../data/database.json');
 
 // Convert name to a slug suitable for use as an ID
@@ -184,38 +184,17 @@ const databaseContent = {
   ]
 };
 
-// Write sample data to database.json
 async function initializeDatabase() {
   try {
-    // Make sure the data directory exists
     await fs.ensureDir(path.dirname(DATABASE_PATH));
-    
+
     // Write the data
     await fs.writeJson(DATABASE_PATH, databaseContent, { spaces: 2 });
-    
-    
-    
-    console.log(JSON.stringify({
-      [CATEGORIES.sciFi]: {
-        [PARAMETERS.techLevel]: "Near Future",
-        [PARAMETERS.alienLife]: true,
-        [PARAMETERS.spaceExploration]: 7
-      }
-    }, null, 2));
-    
-    
-    Object.entries(CATEGORIES).forEach(([name, id]) => {
-      
-    });
-    
-    
-    Object.entries(PARAMETERS).forEach(([name, id]) => {
-      
-    });
+    Object.entries(CATEGORIES).forEach(() => {});
+    Object.entries(PARAMETERS).forEach(() => {});
   } catch (error) {
     console.error('Error initializing database:', error);
   }
 }
 
-// Run the initialization
 initializeDatabase();

@@ -1,8 +1,8 @@
 // index.js
+/* global process */
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const errorHandler = require('./middleware/errorHandler');
 const net = require('net');
 

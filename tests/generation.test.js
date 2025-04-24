@@ -1,8 +1,10 @@
+/* global describe, test, expect, beforeAll, jest */
+
 const { request, createTestCategory, createTestParameters, cleanDatabase, initDatabase } = require('./setup');
 
 // Mock the AI service to avoid actual API calls
 jest.mock('../services/aiService', () => ({
-  generateContent: jest.fn().mockImplementation(async (parameters) => {
+  generateContent: jest.fn().mockImplementation(async () => {
     return {
       success: true,
       content: "This is a mocked story based on your parameters!",

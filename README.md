@@ -19,6 +19,7 @@ The Express backend API for SpecGen, providing endpoints for managing categories
 ## Setup
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
@@ -30,6 +31,7 @@ The Express backend API for SpecGen, providing endpoints for managing categories
    - Set the environment: `NODE_ENV=development`
 
 3. Start the server:
+
    ```bash
    npm run dev  # For development with nodemon
    npm start    # For production
@@ -38,6 +40,7 @@ The Express backend API for SpecGen, providing endpoints for managing categories
 ## API Endpoints
 
 ### Categories
+
 - `GET /api/categories`: List all categories
 - `GET /api/categories/:id`: Get category details
 - `POST /api/categories`: Create category
@@ -45,6 +48,7 @@ The Express backend API for SpecGen, providing endpoints for managing categories
 - `DELETE /api/categories/:id`: Delete category
 
 ### Parameters
+
 - `GET /api/parameters`: List all parameters
 - `GET /api/parameters/:id`: Get parameter details
 - `POST /api/parameters`: Create parameter
@@ -52,6 +56,7 @@ The Express backend API for SpecGen, providing endpoints for managing categories
 - `DELETE /api/parameters/:id`: Delete parameter
 
 ### Generation
+
 - `POST /api/generate`: Send parameters to AI service to generate fiction
 
 ## Data Structure
@@ -94,11 +99,13 @@ Categories and parameters are stored in a JSON file with the following structure
 ## API Documentation
 
 Access Swagger UI:
+
 - Open `http://localhost:3000/api-docs` in your browser
 
 ## Testing
 
 Run tests:
+
 ```bash
 npm test
 ```
@@ -110,4 +117,4 @@ npm test
 - OpenAI API
 - JSON file-based storage
 - Jest for testing
-- Swagger for API documentation 
+- Swagger for API documentation

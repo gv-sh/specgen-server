@@ -1,9 +1,9 @@
-// middleware/errorHandler.js
+/* global process */
 
 /**
  * Global error handler middleware
  */
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, _req, res) => {
   console.error('Error:', err);
   
   // Default error status and message

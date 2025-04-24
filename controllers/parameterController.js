@@ -250,7 +250,7 @@ const parameterController = {
       }
       
       // Perform the deletion
-      const deleted = await databaseService.deleteParameter(id);
+      await databaseService.deleteParameter(id);
       
       res.status(200).json({
         success: true,

@@ -1,4 +1,4 @@
-// tests/categories.test.js
+/* global describe, test, expect, beforeAll */
 const { request, cleanDatabase, initDatabase } = require('./setup');
 
 describe('Category API Tests', () => {

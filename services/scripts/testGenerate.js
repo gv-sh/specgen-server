@@ -1,8 +1,8 @@
-// server/scripts/testGenerate.js
 const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
 
+// eslint-disable-next-line no-undef
 const DATABASE_PATH = path.join(__dirname, '../data/database.json');
 
 async function testGenerateEndpoint() {
@@ -14,10 +14,9 @@ async function testGenerateEndpoint() {
       console.error('No categories found in database. Run npm run init-db first.');
       return;
     }
-    
+  
     // Get the first category
     const category = data.categories[0];
-    
     
     // Get parameters for this category
     const parameters = data.parameters.filter(p => p.categoryId === category.id);
@@ -65,19 +64,11 @@ async function testGenerateEndpoint() {
       [category.id]: paramValues
     };
     
-    
-    
-    
-    // Make the API call
-    const response = await axios.post('http://localhost:3001/api/generate', requestBody);
-    
-    
-    
-    
+    await axios.post('http://localhost:3001/api/generate', requestBody);
+
   } catch (error) {
     console.error('Error testing generate endpoint:', error.response ? error.response.data : error);
   }
 }
 
-// Run the test
 testGenerateEndpoint();

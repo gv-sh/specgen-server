@@ -1,9 +1,11 @@
+/* global process */
 const fs = require('fs').promises;
 const path = require('path');
 
 // Use test database in development mode
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const DATABASE_PATH = path.resolve(
+  // eslint-disable-next-line no-undef
   __dirname, 
   `../data/${isDevelopment ? 'test-database.json' : 'database.json'}`
 );
