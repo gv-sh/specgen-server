@@ -1,6 +1,7 @@
 // controllers/generateController.js
 const aiService = require('../services/aiService');
 const databaseService = require('../services/databaseService');
+const settingsService = require('../services/settingsService');
 
 /**
  * Validate a parameter value based on its type
@@ -114,8 +115,11 @@ const generateController = {
    */
   async generate(req, res, next) {
     try {
+      // Get default content type from settings
+      const defaultContentType = await settingsService.getSetting('defaults.content_type', 'fiction');
+      
       // Extract data from request body
-      const { parameterValues, contentType = 'fiction', title } = req.body;
+      const { parameterValues, contentType = defaultContentType, title } = req.body;
 
       // Validate content type
       if (contentType !== 'fiction' && contentType !== 'image') {

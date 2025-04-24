@@ -1,6 +1,7 @@
 // services/aiService.js
 const axios = require('axios');
 const { Buffer } = require('buffer');
+const settingsService = require('./settingsService');
 
 /**
  * Service for interacting with OpenAI API
@@ -24,8 +25,6 @@ class AIService {
    * @returns {Promise<Object>} - Generated content from OpenAI
    */
   async generateContent(parameters, type = 'fiction') {
-    
-    
     try {
       // Call appropriate generation method based on type
       if (type === 'fiction') {
@@ -51,27 +50,37 @@ class AIService {
    */
   async generateFiction(parameters) {
     try {
+      // Get model settings
+      const model = await settingsService.getSetting('ai.models.fiction', 'gpt-4o-mini');
+      const temperature = await settingsService.getSetting('ai.parameters.fiction.temperature', 0.8);
+      const maxTokens = await settingsService.getSetting('ai.parameters.fiction.max_tokens', 1000);
+      
       // Format parameters into a clean markdown prompt
       const prompt = this.formatFictionPrompt(parameters);
       
+      // Get system prompt from settings
+      const systemPrompt = await settingsService.getSetting(
+        'ai.parameters.fiction.system_prompt', 
+        "You are a speculative fiction generator that creates compelling, imaginative stories based on the parameters provided by the user."
+      );
       
       // Call OpenAI API
       const response = await axios.post(
         this.chatCompletionUrl,
         {
-          model: "gpt-4o-mini",
+          model: model,
           messages: [
             {
               role: "system",
-              content: "You are a speculative fiction generator that creates compelling, imaginative stories based on the parameters provided by the user."
+              content: systemPrompt
             },
             {
               role: "user",
               content: prompt
             }
           ],
-          temperature: 0.8,
-          max_tokens: 1000
+          temperature: temperature,
+          max_tokens: maxTokens
         },
         {
           headers: {
@@ -114,6 +123,11 @@ class AIService {
    */
   async generateImage(parameters) {
     try {
+      // Get model settings
+      const model = await settingsService.getSetting('ai.models.image', 'dall-e-3');
+      const size = await settingsService.getSetting('ai.parameters.image.size', '1024x1024');
+      const quality = await settingsService.getSetting('ai.parameters.image.quality', 'standard');
+      
       // Format parameters into a prompt for image generation
       const prompt = this.formatImagePrompt(parameters);
       
@@ -121,12 +135,12 @@ class AIService {
       const response = await axios.post(
         this.imageGenerationUrl,
         {
-          model: "dall-e-3",
+          model: model,
           prompt: prompt,
           n: 1,
-          size: "1024x1024",
-          quality: "standard",
-          response_format: "b64_json"  // Changed from "url"
+          size: size,
+          quality: quality,
+          response_format: "b64_json"
         },
         {
           headers: {
@@ -139,9 +153,9 @@ class AIService {
       // Extract the generated image data from response
       return {
         success: true,
-        imageData: Buffer.from(response.data.data[0].b64_json, 'base64'),  // Store binary data
+        imageData: Buffer.from(response.data.data[0].b64_json, 'base64'),
         metadata: {
-          model: "dall-e-3",
+          model: model,
           prompt: prompt
         }
       };
@@ -159,9 +173,15 @@ class AIService {
    * @param {Object} parameters - User-selected parameters
    * @returns {String} - Formatted prompt
    */
-  formatFictionPrompt(parameters) {
+  async formatFictionPrompt(parameters) {
+    // Get default story length from settings
+    const defaultStoryLength = await settingsService.getSetting(
+      'ai.parameters.fiction.default_story_length', 
+      500
+    );
+    
     // Extract the story length parameter if present
-    let storyLength = 500; // Default length in words
+    let storyLength = defaultStoryLength;
     
     // Start with a simple prompt
     let prompt = "Write a speculative fiction story with the following elements:\n\n";

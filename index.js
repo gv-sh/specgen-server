@@ -50,14 +50,16 @@ const categoryRoutes = require('./routes/categories');
 const parameterRoutes = require('./routes/parameters');
 const generateRoutes = require('./routes/generate');
 const databaseRoutes = require('./routes/database');
-const contentRoutes = require('./routes/content'); // New content routes
+const contentRoutes = require('./routes/content');
+const settingsRoutes = require('./routes/settings'); // New settings routes
 
 // API Routes
 app.use('/api/categories', categoryRoutes);
 app.use('/api/parameters', parameterRoutes);
 app.use('/api/generate', generateRoutes);
 app.use('/api/database', databaseRoutes);
-app.use('/api/content', contentRoutes); // Add content routes
+app.use('/api/content', contentRoutes);
+app.use('/api/settings', settingsRoutes); // Add settings routes
 
 // Only add Swagger in non-test environment
 if (process.env.NODE_ENV !== 'test') {
