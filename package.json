@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "NODE_ENV=development nodemon index.js",
-    "test": "jest --forceExit --runInBand",
+    "test": "jest --runInBand --config jest.config.js --silent=true --colors=true --detectOpenHandles",
     "test-generate": "node scripts/testGenerate.js"
   },
   "keywords": ["api", "generator", "fiction"],
@@ -30,13 +30,5 @@
     "jest": "^29.7.0",
     "nodemon": "^3.1.9",
     "supertest": "^6.3.4"
-  },
-  "jest": {
-    "transform": {
-      "^.+\\.js$": "babel-jest"
-    },
-    "testEnvironment": "node",
-    "testTimeout": 10000,
-    "runInBand": true
   }
 }

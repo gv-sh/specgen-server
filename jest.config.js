@@ -12,5 +12,9 @@ module.exports = {
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1'
-  }
+  },
+  reporters: ['<rootDir>/reporters/customReporter.js'],
+  verbose: false,
+  silent: true,
+  noStackTrace: true
 };
