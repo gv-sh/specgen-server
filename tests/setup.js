@@ -42,13 +42,24 @@ const createTestCategory = async () => {
   const categoryName = "Test Generation Category";
   console.log(`Creating test category: ${categoryName}`);
   
-  const response = await request.post('/api/categories').send({
-    name: categoryName,
-    visibility: "Show"
-  });
-  
-  console.log(`Test category created with ID: ${response.body.data?.id || 'unknown'}`);
-  return response.body.data;
+  try {
+    const response = await request.post('/api/categories').send({
+      name: categoryName,
+      visibility: "Show"
+    });
+    
+    console.log('Create Category Response:', JSON.stringify(response.body, null, 2));
+    
+    if (!response.body.success) {
+      throw new Error(`Failed to create category: ${JSON.stringify(response.body)}`);
+    }
+    
+    console.log(`Test category created with ID: ${response.body.data?.id || 'unknown'}`);
+    return response.body.data;
+  } catch (error) {
+    console.error('Error creating test category:', error);
+    throw error;
+  }
 };
 
 // Utility function to clean the database for testing
@@ -85,6 +96,7 @@ const createTestParameters = async (categoryId) => {
         { label: "Test 2" }
       ]
     });
+    console.log('Dropdown Parameter Response:', JSON.stringify(dropdownResponse.body, null, 2));
     
     // Create a slider parameter
     const sliderResponse = await request.post('/api/parameters').send({
@@ -98,6 +110,7 @@ const createTestParameters = async (categoryId) => {
         step: 1
       }
     });
+    console.log('Slider Parameter Response:', JSON.stringify(sliderResponse.body, null, 2));
 
     // Create a toggle parameter
     const toggleResponse = await request.post('/api/parameters').send({
@@ -110,6 +123,7 @@ const createTestParameters = async (categoryId) => {
         off: "No"
       }
     });
+    console.log('Toggle Parameter Response:', JSON.stringify(toggleResponse.body, null, 2));
 
     return {
       dropdown: dropdownResponse.body.data || {},
@@ -118,6 +132,7 @@ const createTestParameters = async (categoryId) => {
     };
   } catch (error) {
     console.error(`Error creating test parameters: ${error.message}`);
+    console.error(error);
     return { dropdown: {}, slider: {}, toggle: {} };
   }
 };

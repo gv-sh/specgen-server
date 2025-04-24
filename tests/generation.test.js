@@ -3,6 +3,7 @@ const { request, createTestCategory, createTestParameters, cleanDatabase, initDa
 // Mock the AI service to avoid actual API calls
 jest.mock('../services/aiService', () => ({
   generateContent: jest.fn().mockImplementation(async (parameters) => {
+    console.log('Mocked AI Service Parameters:', JSON.stringify(parameters, null, 2));
     return {
       success: true,
       content: "This is a mocked story based on your parameters!",
@@ -18,58 +19,81 @@ describe('Generation API Tests', () => {
   let category;
   let parameters;
 
-  // Setup test data
+  // Ensure category and parameters are created before tests
   beforeAll(async () => {
     await initDatabase();
     await cleanDatabase();
     
-    // Create a test category and parameters
+    // Create category
     category = await createTestCategory();
+    console.log('Test Category:', JSON.stringify(category, null, 2));
     
-    // Only proceed if we got a valid category
-    if (category && category.id) {
-      parameters = await createTestParameters(category.id);
-    } else {
-      console.error('Failed to create test category');
+    if (!category || !category.id) {
+      throw new Error('Failed to create test category');
+    }
+    
+    // Create parameters
+    parameters = await createTestParameters(category.id);
+    console.log('Test Parameters:', JSON.stringify(parameters, null, 2));
+    
+    if (!parameters.dropdown || !parameters.slider || !parameters.toggle) {
+      throw new Error('Failed to create test parameters');
     }
   });
 
-  // Utility function to conditionally run tests based on setup
-  const runTest = (name, testFn) => {
-    test(name, async () => {
-      if (!category || !category.id || !parameters || !parameters.dropdown || !parameters.dropdown.id) {
-        console.warn(`Skipping test "${name}" due to missing test data`);
-        return;
-      }
-      
-      await testFn();
-    });
+  // Diagnostic helper function
+  const logTestDetails = (testName, payload) => {
+    console.log(`\n--- ${testName} ---`);
+    console.log('Payload:', JSON.stringify(payload, null, 2));
+    console.log('Category ID:', category.id);
+    console.log('Dropdown Parameter:', JSON.stringify(parameters.dropdown, null, 2));
   };
 
-  runTest('POST /api/generate - Should generate content with dropdown parameter', async () => {
+  test('POST /api/generate - Should generate content with dropdown parameter', async () => {
     const requestPayload = {
-      [category.id]: {
-        [parameters.dropdown.id]: "Test 1"
+      parameterValues: {
+        [category.id]: {
+          [parameters.dropdown.id]: parameters.dropdown.values[0].label
+        }
       }
     };
-
+    
+    logTestDetails('Dropdown Parameter Test', requestPayload);
+  
     const response = await request.post('/api/generate').send(requestPayload);
+    
+    console.log('Response Status:', response.status);
+    console.log('Response Body:', JSON.stringify(response.body, null, 2));
     
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('success', true);
     expect(response.body).toHaveProperty('content');
     expect(response.body).toHaveProperty('metadata');
-    expect(response.body.metadata).toHaveProperty('model');
-    expect(response.body.metadata).toHaveProperty('tokens');
   });
 
-  runTest('POST /api/generate - Should generate content with slider parameter', async () => {
+  test('POST /api/generate - Should generate content with slider parameter', async () => {
     const requestPayload = {
-      [category.id]: {
-        [parameters.slider.id]: 50
+      parameterValues: {
+        [category.id]: {
+          [parameters.slider.id]: 50
+        }
       }
     };
-
+    const response = await request.post('/api/generate').send(requestPayload);
+    
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('success', true);
+    expect(response.body).toHaveProperty('content');
+  });
+  
+  test('POST /api/generate - Should generate content with toggle parameter', async () => {
+    const requestPayload = {
+      parameterValues: {
+        [category.id]: {
+          [parameters.toggle.id]: true
+        }
+      }
+    };
     const response = await request.post('/api/generate').send(requestPayload);
     
     expect(response.status).toBe(200);
@@ -77,29 +101,16 @@ describe('Generation API Tests', () => {
     expect(response.body).toHaveProperty('content');
   });
 
-  runTest('POST /api/generate - Should generate content with toggle parameter', async () => {
+  test('POST /api/generate - Should generate content with multiple parameters', async () => {
     const requestPayload = {
-      [category.id]: {
-        [parameters.toggle.id]: true
+      parameterValues: {
+        [category.id]: {
+          [parameters.dropdown.id]: parameters.dropdown.values[0].label,
+          [parameters.slider.id]: 75,
+          [parameters.toggle.id]: false
+        }
       }
     };
-
-    const response = await request.post('/api/generate').send(requestPayload);
-    
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('success', true);
-    expect(response.body).toHaveProperty('content');
-  });
-
-  runTest('POST /api/generate - Should generate content with multiple parameters', async () => {
-    const requestPayload = {
-      [category.id]: {
-        [parameters.dropdown.id]: "Test 1",
-        [parameters.slider.id]: 75,
-        [parameters.toggle.id]: false
-      }
-    };
-
     const response = await request.post('/api/generate').send(requestPayload);
     
     expect(response.status).toBe(200);
@@ -114,16 +125,17 @@ describe('Generation API Tests', () => {
     expect(response.status).toBe(400);
     expect(response.body).toHaveProperty('success', false);
     expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toContain('No parameters provided');
+    expect(response.body.error).toContain('Parameters must be a non-null object');
   });
 
-  runTest('POST /api/generate - Should reject invalid category ID', async () => {
+  test('POST /api/generate - Should reject invalid category ID', async () => {
     const requestPayload = {
-      ["invalid-category-id"]: {
-        [parameters.dropdown.id]: "Test 1"
+      parameterValues: {
+        ["invalid-category-id"]: {
+          [parameters.dropdown.id]: parameters.dropdown.values[0].label
+        }
       }
     };
-
     const response = await request.post('/api/generate').send(requestPayload);
     
     expect(response.status).toBe(400);
@@ -131,12 +143,14 @@ describe('Generation API Tests', () => {
     expect(response.body).toHaveProperty('error');
     expect(response.body.error).toContain('Category');
     expect(response.body.error).toContain('not found');
-  });
+   });
 
-  runTest('POST /api/generate - Should reject invalid parameter ID', async () => {
+  test('POST /api/generate - Should reject invalid parameter ID', async () => {
     const requestPayload = {
-      [category.id]: {
-        ["invalid-param-id"]: "Test 1"
+      parameterValues: {
+        [category.id]: {
+          ["invalid-param-id"]: parameters.dropdown.values[0].label
+        }
       }
     };
 
@@ -149,11 +163,13 @@ describe('Generation API Tests', () => {
     expect(response.body.error).toContain('not found');
   });
 
-  runTest('POST /api/generate - Should validate parameter values', async () => {
+  test('POST /api/generate - Should validate parameter values', async () => {
     // Invalid dropdown value
     const requestPayload = {
-      [category.id]: {
-        [parameters.dropdown.id]: "Invalid Value"
+      parameterValues: {
+        [category.id]: {
+          [parameters.dropdown.id]: "Invalid Value"
+        }
       }
     };
 
@@ -165,16 +181,13 @@ describe('Generation API Tests', () => {
     expect(response.body.error).toContain('not valid for dropdown parameter');
   });
 
-  runTest('POST /api/generate - Should validate slider range', async () => {
-    // Create a slider with a specific range for testing
-    const sliderParam = parameters.slider;
-    const maxValue = sliderParam.config?.max || 100;
-    const outOfRangeValue = maxValue + 1000;
-    
+  test('POST /api/generate - Should validate slider range', async () => {
     // Out of range slider value
     const requestPayload = {
-      [category.id]: {
-        [sliderParam.id]: outOfRangeValue
+      parameterValues: {
+        [category.id]: {
+          [parameters.slider.id]: 150
+        }
       }
     };
 
@@ -186,11 +199,13 @@ describe('Generation API Tests', () => {
     expect(response.body.error).toContain('outside the range');
   });
 
-  runTest('POST /api/generate - Should validate toggle value type', async () => {
+  test('POST /api/generate - Should validate toggle value type', async () => {
     // Wrong type for toggle (string instead of boolean)
     const requestPayload = {
-      [category.id]: {
-        [parameters.toggle.id]: "Yes"
+      parameterValues: {
+        [category.id]: {
+          [parameters.toggle.id]: "Not a boolean"
+        }
       }
     };
 

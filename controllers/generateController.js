@@ -3,64 +3,33 @@ const aiService = require('../services/aiService');
 const databaseService = require('../services/databaseService');
 
 /**
- * Controller for handling generation requests
- */
-const generateController = {
-  /**
-   * Generate content based on submitted parameters
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next middleware function
-   */
-  async generate(req, res, next) {
-    try {
-      // Extract data from request body
-      const { parameterValues, categoryIds, generationType = 'fiction' } = req.body;
-      
-      // Force always call the API - remove any artificial failure triggers
-      const result = await aiService.generateContent(
-        parameterValues || { "Default Category": { "Theme": "Science Fiction" } }, 
-        generationType
-      );
-      
-      if (result.success) {
-        // Structure response based on generation type
-        const response = {
-          success: true,
-          metadata: result.metadata
-        };
-        
-        // Add the appropriate content field based on generation type
-        if (generationType === 'fiction') {
-          response.content = result.content;
-        } else if (generationType === 'image') {
-          response.imageUrl = result.imageUrl;
-        }
-        
-        res.status(200).json(response);
-      } else {
-        res.status(500).json({
-          success: false,
-          error: result.error || `Failed to generate ${generationType}`
-        });
-      }
-    } catch (error) {
-      console.error('Error in generate controller:', error);
-      next(error);
-    }
-  }
-};
-
-/**
  * Validate a parameter value based on its type
  * @param {Object} parameter - Parameter definition
  * @param {*} value - Value to validate
  * @returns {String|null} - Error message or null if valid
  */
 function validateParameterValue(parameter, value) {
+  console.log('Validating Parameter:', JSON.stringify(parameter, null, 2));
+  console.log('Validating Value:', value);
+
+  // Explicit null/undefined check
+  if (value === null || value === undefined) {
+    return `Parameter "${parameter.name}" is required`;
+  }
+
   switch (parameter.type) {
     case 'Dropdown':
-      if (!parameter.values.some(v => v.label === value)) {
+      // Ensure values array exists and is populated
+      if (!parameter.values || !Array.isArray(parameter.values) || parameter.values.length === 0) {
+        console.error('Invalid dropdown configuration');
+        return `Invalid dropdown configuration for parameter "${parameter.name}"`;
+      }
+      
+      // Check if the value matches any of the predefined labels
+      const isValidDropdown = parameter.values.some(v => v.label === value);
+      console.log('Dropdown Validation:', isValidDropdown);
+      
+      if (!isValidDropdown) {
         return `Value "${value}" is not valid for dropdown parameter "${parameter.name}"`;
       }
       break;
@@ -74,19 +43,32 @@ function validateParameterValue(parameter, value) {
       const min = parameter.config?.min || 0;
       const max = parameter.config?.max || 100;
       
+      console.log(`Slider Validation: ${numValue} between ${min} and ${max}`);
+      
       if (numValue < min || numValue > max) {
         return `Value ${value} is outside the range [${min}-${max}] for slider parameter "${parameter.name}"`;
       }
       break;
       
     case 'Toggle Switch':
-      if (typeof value !== 'boolean') {
+      const isBooleanToggle = typeof value === 'boolean';
+      console.log('Toggle Validation:', isBooleanToggle);
+      
+      if (!isBooleanToggle) {
         return `Value for toggle parameter "${parameter.name}" must be a boolean`;
       }
       break;
       
     case 'Radio Buttons':
-      if (!parameter.values.some(v => v.label === value)) {
+      // Ensure values array exists and is populated
+      if (!parameter.values || !Array.isArray(parameter.values) || parameter.values.length === 0) {
+        return `Invalid radio buttons configuration for parameter "${parameter.name}"`;
+      }
+      
+      const isValidRadio = parameter.values.some(v => v.label === value);
+      console.log('Radio Button Validation:', isValidRadio);
+      
+      if (!isValidRadio) {
         return `Value "${value}" is not valid for radio parameter "${parameter.name}"`;
       }
       break;
@@ -96,11 +78,18 @@ function validateParameterValue(parameter, value) {
         return `Value for checkbox parameter "${parameter.name}" must be an array`;
       }
       
+      // Ensure values array exists and is populated
+      if (!parameter.values || !Array.isArray(parameter.values) || parameter.values.length === 0) {
+        return `Invalid checkbox configuration for parameter "${parameter.name}"`;
+      }
+      
       // Check if all selected values are valid
-      for (const item of value) {
-        if (!parameter.values.some(v => v.label === item)) {
-          return `Value "${item}" is not valid for checkbox parameter "${parameter.name}"`;
-        }
+      const invalidValues = value.filter(item => 
+        !parameter.values.some(v => v.label === item)
+      );
+      
+      if (invalidValues.length > 0) {
+        return `Values ${invalidValues.join(', ')} are not valid for checkbox parameter "${parameter.name}"`;
       }
       break;
       
@@ -110,5 +99,115 @@ function validateParameterValue(parameter, value) {
   
   return null;
 }
+
+/**
+ * Controller for handling generation requests
+ */
+const generateController = {
+  /**
+   * Generate content based on submitted parameters
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  async generate(req, res, next) {
+    try {
+      console.log('Generate Request Body:', JSON.stringify(req.body, null, 2));
+
+      // Extract data from request body
+      const { parameterValues } = req.body;
+      
+      // Validate input parameters exist and are an object
+      if (!parameterValues || typeof parameterValues !== 'object') {
+        console.error('No parameters or invalid parameters');
+        return res.status(400).json({
+          success: false,
+          error: 'Parameters must be a non-null object'
+        });
+      }
+
+      // Log parameter values for debugging
+      console.log('Parameter Values:', JSON.stringify(parameterValues, null, 2));
+      
+      // Validate each category and its parameters
+      for (const [categoryId, categoryParams] of Object.entries(parameterValues)) {
+        console.log(`Processing Category: ${categoryId}`);
+        
+        // Check if category exists
+        const category = await databaseService.getCategoryById(categoryId);
+        if (!category) {
+          console.error(`Category not found: ${categoryId}`);
+          return res.status(400).json({
+            success: false,
+            error: `Category with ID ${categoryId} not found`
+          });
+        }
+        
+        // Validate that categoryParams is an object
+        if (typeof categoryParams !== 'object' || categoryParams === null) {
+          console.error(`Invalid parameters for category ${categoryId}`);
+          return res.status(400).json({
+            success: false,
+            error: `Invalid parameters for category ${categoryId}`
+          });
+        }
+        
+        // Get all parameters for this category
+        const categoryParameters = await databaseService.getParametersByCategoryId(categoryId);
+        console.log('Category Parameters:', JSON.stringify(categoryParameters, null, 2));
+        
+        // Validate each parameter
+        for (const [parameterId, paramValue] of Object.entries(categoryParams)) {
+          console.log(`Validating Parameter: ${parameterId}`);
+          
+          // Check if parameter exists
+          const parameter = categoryParameters.find(p => p.id === parameterId);
+          if (!parameter) {
+            console.error(`Parameter not found: ${parameterId}`);
+            return res.status(400).json({
+              success: false,
+              error: `Parameter with ID ${parameterId} not found in category ${categoryId}`
+            });
+          }
+          
+          // Validate parameter value
+          const validationError = validateParameterValue(parameter, paramValue);
+          if (validationError) {
+            console.error('Validation Error:', validationError);
+            return res.status(400).json({
+              success: false,
+              error: validationError
+            });
+          }
+        }
+      }
+      
+      // Call AI service with parameters
+      const result = await aiService.generateContent(
+        parameterValues, 
+        'fiction'
+      );
+      
+      if (result.success) {
+        // Structure response based on generation type
+        const response = {
+          success: true,
+          content: result.content,
+          metadata: result.metadata
+        };
+        
+        res.status(200).json(response);
+      } else {
+        res.status(500).json({
+          success: false,
+          error: result.error || 'Failed to generate fiction'
+        });
+      }
+    } catch (error) {
+      console.error('Error in generate controller:', error);
+      next(error);
+    }
+  }
+};
 
 module.exports = generateController;
