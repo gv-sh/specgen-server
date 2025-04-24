@@ -196,9 +196,13 @@ const generateController = {
         const responseData = {
           success: true,
           content: contentType === 'fiction' ? result.content : undefined,
-          imageUrl: contentType === 'image' ? result.imageUrl : undefined,
           metadata: result.metadata
         };
+
+        // For image content, convert binary to base64 for JSON response
+        if (contentType === 'image' && result.imageData) {
+          responseData.imageData = result.imageData.toString('base64');
+        }
 
         // Save the generated content to the database
         const contentToSave = {
@@ -207,13 +211,13 @@ const generateController = {
           parameterValues: parameterValues,
           // For fiction content
           content: contentType === 'fiction' ? result.content : undefined,
-          // For image content
-          imageUrl: contentType === 'image' ? result.imageUrl : undefined,
+          // For image content - store as binary
+          imageData: contentType === 'image' ? result.imageData : undefined,
           metadata: result.metadata
         };
 
         const savedContent = await databaseService.saveGeneratedContent(contentToSave);
-        
+
         // Add the saved ID to the response
         responseData.id = savedContent.id;
         responseData.title = savedContent.title;

@@ -1,30 +1,33 @@
 /* global describe, test, expect, beforeAll, jest */
 
+const { Buffer } = require('buffer');
 const { request, createTestCategory, createTestParameters, cleanDatabase, initDatabase } = require('./setup');
+
+const mockImageData = Buffer.from('test-image-data');
 
 // Mock the AI service to avoid actual API calls
 jest.mock('../services/aiService', () => ({
-  generateContent: jest.fn().mockImplementation(async (parameters, type = 'fiction') => {
-    // Return different responses based on content type
-    if (type === 'image') {
+  generateContent: jest.fn().mockImplementation(async (parameters, type) => {
+    if (type === 'fiction') {
       return {
         success: true,
-        imageUrl: "https://example.com/generated-image.jpg",
+        content: "This is a test story with mocked content.",
         metadata: {
-          model: "dall-e-3-mock",
-          prompt: "A test prompt for image generation"
+          model: "gpt-4o-mini-mock",
+          tokens: 100
         }
       };
-    } else {
+    } else if (type === 'image') {
       return {
         success: true,
-        content: "This is a mocked story based on your parameters!",
+        imageData: mockImageData,
         metadata: {
-          model: "gpt-3.5-turbo-mock",
-          tokens: 50
+          model: "dall-e-3-mock",
+          prompt: "Test prompt for image generation"
         }
       };
     }
+    return { success: false, error: "Unsupported content type" };
   })
 }));
 
@@ -215,7 +218,6 @@ describe('Generation API Tests', () => {
     expect(response.body.error).toContain('must be a boolean');
   });
 
-  // NEW TESTS FOR IMAGE GENERATION
   test('POST /api/generate - Should generate fiction content when explicitly requested', async () => {
     const requestPayload = {
       parameterValues: {
@@ -232,7 +234,7 @@ describe('Generation API Tests', () => {
     expect(response.body).toHaveProperty('success', true);
     expect(response.body).toHaveProperty('content');
     expect(response.body).toHaveProperty('metadata');
-    expect(response.body).not.toHaveProperty('imageUrl');
+    expect(response.body).not.toHaveProperty('imageData');
   });
 
   test('POST /api/generate - Should generate image content when requested', async () => {
@@ -249,7 +251,7 @@ describe('Generation API Tests', () => {
     
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('success', true);
-    expect(response.body).toHaveProperty('imageUrl');
+    expect(response.body).toHaveProperty('imageData');
     expect(response.body).toHaveProperty('metadata');
     expect(response.body).not.toHaveProperty('content');
     expect(response.body.metadata).toHaveProperty('prompt');

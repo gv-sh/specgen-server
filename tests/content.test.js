@@ -1,7 +1,10 @@
 /* global describe, test, expect, beforeAll, jest */
+const { Buffer } = require('buffer');
 const { request, cleanDatabase, initDatabase } = require('./setup');
 const databaseService = require('../services/databaseService');
 const aiService = require('../services/aiService');
+
+const mockImageData = Buffer.from('test-image-data');
 
 // Mock the AI service response
 jest.mock('../services/aiService', () => ({
@@ -18,7 +21,7 @@ jest.mock('../services/aiService', () => ({
     } else if (type === 'image') {
       return {
         success: true,
-        imageUrl: "https://example.com/test-image.jpg",
+        imageData: mockImageData,
         metadata: {
           model: "dall-e-3-mock",
           prompt: "Test prompt for image generation"
@@ -56,7 +59,7 @@ describe('Generated Content API Tests', () => {
     const imageContent = {
       title: "Test Image Content",
       type: "image",
-      imageUrl: "https://example.com/test.jpg",
+      imageData: mockImageData,
       parameterValues: {
         "fantasy": {
           "fantasy-magic-system": "Elemental"
@@ -143,7 +146,7 @@ describe('Generated Content API Tests', () => {
   test('PUT /api/content/:id - Should update image content', async () => {
     const updatedData = {
       title: "Updated Image Title",
-      imageUrl: "https://example.com/updated-image.jpg"
+      imageData: mockImageData
     };
     
     const response = await request.put(`/api/content/${testImageContentId}`).send(updatedData);
@@ -152,7 +155,7 @@ describe('Generated Content API Tests', () => {
     expect(response.body).toHaveProperty('success', true);
     expect(response.body.data).toHaveProperty('id', testImageContentId);
     expect(response.body.data).toHaveProperty('title', updatedData.title);
-    expect(response.body.data).toHaveProperty('imageUrl', updatedData.imageUrl);
+    expect(response.body.data).toHaveProperty('imageData', mockImageData.toString('base64'));
   });
 
   test('DELETE /api/content/:id - Should delete content', async () => {
@@ -273,13 +276,13 @@ describe('Generated Content API Tests', () => {
     
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('success', true);
-    expect(response.body).toHaveProperty('imageUrl');
-    expect(response.body).toHaveProperty('id'); // New content should have an ID
+    expect(response.body).toHaveProperty('imageData');
+    expect(response.body).toHaveProperty('id');
     expect(response.body).toHaveProperty('title', "Fantasy Image");
     
     // Verify content was saved in the database
     const contentResponse = await request.get(`/api/content/${response.body.id}`);
     expect(contentResponse.status).toBe(200);
-    expect(contentResponse.body.data).toHaveProperty('imageUrl', response.body.imageUrl);
+    expect(contentResponse.body.data).toHaveProperty('imageData', response.body.imageData);
   });
 });

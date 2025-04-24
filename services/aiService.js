@@ -1,5 +1,6 @@
 // services/aiService.js
 const axios = require('axios');
+const { Buffer } = require('buffer');
 
 /**
  * Service for interacting with OpenAI API
@@ -125,7 +126,7 @@ class AIService {
           n: 1,
           size: "1024x1024",
           quality: "standard",
-          response_format: "url"
+          response_format: "b64_json"  // Changed from "url"
         },
         {
           headers: {
@@ -135,10 +136,10 @@ class AIService {
         }
       );
       
-      // Extract the generated image URL from response
+      // Extract the generated image data from response
       return {
         success: true,
-        imageUrl: response.data.data[0].url,
+        imageData: Buffer.from(response.data.data[0].b64_json, 'base64'),  // Store binary data
         metadata: {
           model: "dall-e-3",
           prompt: prompt

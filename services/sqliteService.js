@@ -46,7 +46,7 @@ class SQLiteService {
         title TEXT,
         type TEXT NOT NULL,
         content TEXT,
-        image_url TEXT,
+        image_data BLOB,
         parameter_values TEXT,
         metadata TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -78,13 +78,13 @@ class SQLiteService {
    */
   #mapRowToObject(row) {
     if (!row) return null;
-
+  
     return {
       id: row.id,
       title: row.title,
       type: row.type,
       content: row.content,
-      imageUrl: row.image_url,
+      imageData: row.image_data,
       parameterValues: this.#safeJSONParse(row.parameter_values),
       metadata: this.#safeJSONParse(row.metadata),
       createdAt: row.created_at,
@@ -107,7 +107,7 @@ class SQLiteService {
       // Prepare the insert statement
       const insertQuery = `
         INSERT OR REPLACE INTO generated_content 
-        (id, title, type, content, image_url, parameter_values, metadata) 
+        (id, title, type, content, image_data, parameter_values, metadata) 
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `;
 
@@ -123,7 +123,7 @@ class SQLiteService {
           content.title || `${content.type.charAt(0).toUpperCase() + content.type.slice(1)} ${new Date().toISOString().slice(0, 10)}`,
           content.type,
           content.content || null,
-          content.imageUrl || content.image_url || null,
+          content.imageData || null, 
           parameterValuesJson,
           metadataJson
         ],
@@ -217,13 +217,10 @@ class SQLiteService {
         params.push(updates.content);
       }
       
-      // Handle both imageUrl and image_url
-      if (updates.imageUrl) {
-        updateFields.push('image_url = ?');
-        params.push(updates.imageUrl);
-      } else if (updates.image_url) {
-        updateFields.push('image_url = ?');
-        params.push(updates.image_url);
+      // Handle image data updates
+      if (updates.imageData) {
+        updateFields.push('image_data = ?');
+        params.push(updates.imageData);
       }
 
       // Add updated_at timestamp
