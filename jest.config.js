@@ -13,8 +13,19 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1'
   },
-  reporters: ['<rootDir>/reporters/customReporter.js'],
+  reporters: [
+    'default',
+    ['jest-silent-reporter', {
+      useDots: true,
+      suppressConsole: false,
+      showPaths: true,
+      showWarnings: true,
+      showErrors: true,
+      logDirPath: './logs',
+      logFileName: `test-results-${new Date().toISOString().replace(/:/g, '-')}.log`
+    }]
+  ],
   verbose: false,
-  silent: true, // Keep silent to prevent default console output
+  silent: false,
   noStackTrace: true
 };
