@@ -7,9 +7,22 @@ const fs = require('fs').promises;
 const upload = multer({ dest: 'uploads/' });
 
 /**
- * @route   GET /api/database/download
- * @desc    Download the database file
- * @access  Public
+ * @swagger
+ * /api/database/download:
+ *   get:
+ *     summary: Download the database file
+ *     description: Retrieve the current database file in JSON format.
+ *     responses:
+ *       200:
+ *         description: Database data retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       404:
+ *         description: No database data found.
+ *       500:
+ *         description: Failed to download database.
  */
 router.get('/download', async (req, res) => {
   try {
@@ -36,9 +49,30 @@ router.get('/download', async (req, res) => {
 });
 
 /**
- * @route   POST /api/database/restore
- * @desc    Restore the database from a file
- * @access  Public
+ * @swagger
+ * /api/database/restore:
+ *   post:
+ *     summary: Restore the database from a file
+ *     description: Restore the database using an uploaded JSON file. The file should contain valid "categories" and "parameters" arrays.
+ *     consumes:
+ *       - multipart/form-data
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Database restored successfully.
+ *       400:
+ *         description: No file uploaded, invalid JSON file, or invalid database structure.
+ *       500:
+ *         description: Failed to restore database.
  */
 router.post('/restore', upload.single('file'), async (req, res) => {
   try {
@@ -109,9 +143,16 @@ router.post('/restore', upload.single('file'), async (req, res) => {
 });
 
 /**
- * @route   POST /api/database/reset
- * @desc    Reset the database to empty state
- * @access  Public
+ * @swagger
+ * /api/database/reset:
+ *   post:
+ *     summary: Reset the database to an empty state
+ *     description: Clear all data from the database by resetting it to an empty state.
+ *     responses:
+ *       200:
+ *         description: Database reset successfully.
+ *       500:
+ *         description: Failed to reset database.
  */
 router.post('/reset', async (req, res) => {
   try {

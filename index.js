@@ -38,7 +38,7 @@ async function findAvailablePort(startPort, maxAttempts = 10) {
 
 // Initialize Express app
 const app = express();
-let PORT = process.env.PORT || 3003;
+let PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
