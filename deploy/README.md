@@ -23,11 +23,13 @@ This guide explains how to deploy the complete SpecGen application on a Digital 
 ### 2. Deploy the Application
 
 1. SSH into your new droplet:
+
    ```bash
    ssh root@your-droplet-ip
    ```
 
 2. Create a directory for the deployment files:
+
    ```bash
    mkdir -p ~/deploy
    cd ~/deploy
@@ -39,6 +41,7 @@ This guide explains how to deploy the complete SpecGen application on a Digital 
    - `ecosystem.config.js`
 
 4. Make the deployment script executable and run it:
+
    ```bash
    chmod +x deploy.sh
    ./deploy.sh
@@ -74,16 +77,19 @@ npm run build
 ### Monitoring
 
 - View logs:
+
   ```bash
   pm2 logs specgen-server
   ```
 
 - Check server status:
+
   ```bash
   pm2 status
   ```
 
 - Monitor Nginx:
+
   ```bash
   systemctl status nginx
   ```
@@ -91,6 +97,7 @@ npm run build
 ### Backup
 
 Backup the database file regularly:
+
 ```bash
 cp /var/www/specgen/server/data/database.json /var/backups/specgen-$(date +%Y%m%d).json
 ```
