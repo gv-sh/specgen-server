@@ -39,7 +39,7 @@ const initDatabase = async () => {
 
 // Utility function to create a test category
 const createTestCategory = async () => {
-  const categoryName = "Test Category";
+  const categoryName = "Test Generation Category";
   console.log(`Creating test category: ${categoryName}`);
   
   const response = await request.post('/api/categories').send({

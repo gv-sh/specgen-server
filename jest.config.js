@@ -4,7 +4,15 @@ module.exports = {
   testTimeout: 10000,
   moduleFileExtensions: ['js', 'json'],
   transform: {
-    '^.+\\.js$': ['@babel/preset-env', { targets: { node: 'current' } }]
+    '^.+\\.js$': ['babel-jest', { 
+      presets: [
+        ['@babel/preset-env', { 
+          targets: { 
+            node: 'current' 
+          } 
+        }]
+      ]
+    }]
   },
   transformIgnorePatterns: [
     'node_modules/(?!(swagger-jsdoc|swagger-ui-express)/)'

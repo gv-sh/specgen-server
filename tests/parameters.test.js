@@ -34,7 +34,7 @@ describe('Parameter API Tests', () => {
     expect(response.body).toHaveProperty('data');
     expect(Array.isArray(response.body.data)).toBe(true);
     
-    // All returned parameters should belong to the specified category
+    // Verify that remaining parameters belong to the specified category
     response.body.data.forEach(param => {
       expect(param.categoryId).toBe(categoryId);
     });
@@ -47,9 +47,9 @@ describe('Parameter API Tests', () => {
       visibility: 'Basic',
       categoryId: categoryId,
       values: [
-        { id: 'char-1', label: 'Hero' },
-        { id: 'char-2', label: 'Villain' },
-        { id: 'char-3', label: 'Sidekick' }
+        { label: 'Hero' },
+        { label: 'Villain' },
+        { label: 'Sidekick' }
       ]
     };
 
@@ -194,8 +194,8 @@ describe('Parameter API Tests', () => {
       visibility: 'Basic',
       categoryId: categoryId,
       values: [
-        { id: 'del-1', label: 'Delete 1' },
-        { id: 'del-2', label: 'Delete 2' }
+        { label: 'Delete 1' },
+        { label: 'Delete 2' }
       ]
     };
 

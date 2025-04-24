@@ -1,4 +1,3 @@
-// tests/generation.test.js
 const { request, createTestCategory, createTestParameters, cleanDatabase, initDatabase } = require('./setup');
 
 // Mock the AI service to avoid actual API calls
@@ -30,17 +29,12 @@ describe('Generation API Tests', () => {
     // Only proceed if we got a valid category
     if (category && category.id) {
       parameters = await createTestParameters(category.id);
-      
-      // Log for debugging
-      console.log('Test setup complete:');
-      console.log('Category:', category);
-      console.log('Parameters:', parameters);
     } else {
       console.error('Failed to create test category');
     }
   });
 
-  // Skip tests if setup failed
+  // Utility function to conditionally run tests based on setup
   const runTest = (name, testFn) => {
     test(name, async () => {
       if (!category || !category.id || !parameters || !parameters.dropdown || !parameters.dropdown.id) {
