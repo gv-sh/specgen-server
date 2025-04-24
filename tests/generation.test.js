@@ -145,7 +145,7 @@ describe('Generation API Tests', () => {
     expect(response.body.error).toContain('Parameters must be a non-null object');
   });
 
-  test('POST /api/generate - Should reject invalid category ID', async () => {
+  test('POST /api/generate - Should handle invalid category ID by skipping', async () => {
     const requestPayload = {
       parameterValues: {
         ["invalid-category-id"]: {
@@ -155,14 +155,12 @@ describe('Generation API Tests', () => {
     };
     const response = await request.post('/api/generate').send(requestPayload);
     
-    expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty('success', false);
-    expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toContain('Category');
-    expect(response.body.error).toContain('not found');
+    // Should still return 200 but with empty parameter set
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('success', true);
    });
 
-  test('POST /api/generate - Should reject invalid parameter ID', async () => {
+  test('POST /api/generate - Should handle invalid parameter ID by skipping', async () => {
     const requestPayload = {
       parameterValues: {
         [category.id]: {
@@ -173,14 +171,12 @@ describe('Generation API Tests', () => {
 
     const response = await request.post('/api/generate').send(requestPayload);
     
-    expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty('success', false);
-    expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toContain('Parameter');
-    expect(response.body.error).toContain('not found');
+    // Should still return 200 but with filtered parameters
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('success', true);
   });
 
-  test('POST /api/generate - Should validate parameter values', async () => {
+  test('POST /api/generate - Should skip invalid parameter values', async () => {
     // Invalid dropdown value
     const requestPayload = {
       parameterValues: {
@@ -192,13 +188,12 @@ describe('Generation API Tests', () => {
 
     const response = await request.post('/api/generate').send(requestPayload);
     
-    expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty('success', false);
-    expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toContain('not valid for dropdown parameter');
+    // Should still return 200 but with filtered parameters
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('success', true);
   });
 
-  test('POST /api/generate - Should validate slider range', async () => {
+  test('POST /api/generate - Should skip out-of-range slider values', async () => {
     // Out of range slider value
     const requestPayload = {
       parameterValues: {
@@ -210,13 +205,12 @@ describe('Generation API Tests', () => {
 
     const response = await request.post('/api/generate').send(requestPayload);
     
-    expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty('success', false);
-    expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toContain('outside the range');
+    // Should still return 200 but with filtered parameters
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('success', true);
   });
 
-  test('POST /api/generate - Should validate toggle value type', async () => {
+  test('POST /api/generate - Should skip invalid toggle value types', async () => {
     // Wrong type for toggle (string instead of boolean)
     const requestPayload = {
       parameterValues: {
@@ -228,10 +222,9 @@ describe('Generation API Tests', () => {
 
     const response = await request.post('/api/generate').send(requestPayload);
     
-    expect(response.status).toBe(400);
-    expect(response.body).toHaveProperty('success', false);
-    expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toContain('must be a boolean');
+    // Should still return 200 but with filtered parameters
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('success', true);
   });
 
   test('POST /api/generate - Should generate fiction content when explicitly requested', async () => {

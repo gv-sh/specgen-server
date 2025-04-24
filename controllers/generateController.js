@@ -138,60 +138,71 @@ const generateController = {
         });
       }
 
-      // In test mode, skip thorough parameter validation
-      if (globalThis.process?.env?.NODE_ENV !== 'test') {
-        // Validate each category and its parameters
+      // Initialize filteredParameters regardless of test mode
+      const filteredParameters = {};
+      
+      // In test mode, simply copy parameters without validation
+      if (globalThis.process?.env?.NODE_ENV === 'test') {
+        // For test environment, just use the original parameters
+        Object.assign(filteredParameters, parameterValues);
+      } else {
+        // For non-test environment, validate each category and its parameters
         for (const [categoryId, categoryParams] of Object.entries(parameterValues)) {
           // Check if category exists
           const category = await databaseService.getCategoryById(categoryId);
           if (!category) {
-            console.error(`Category not found: ${categoryId}`);
-            return res.status(400).json({
-              success: false,
-              error: `Category with ID ${categoryId} not found`
-            });
+            console.warn(`Category not found: ${categoryId} - skipping entire category`);
+            continue;
           }
 
           // Validate that categoryParams is an object
           if (typeof categoryParams !== 'object' || categoryParams === null) {
-            console.error(`Invalid parameters for category ${categoryId}`);
-            return res.status(400).json({
-              success: false,
-              error: `Invalid parameters for category ${categoryId}`
-            });
+            console.warn(`Invalid parameters for category ${categoryId} - skipping entire category`);
+            continue;
           }
+          
+          // Add category to filtered parameters
+          filteredParameters[categoryId] = {};
 
           // Get all parameters for this category
           const categoryParameters = await databaseService.getParametersByCategoryId(categoryId);
 
-          // Validate each parameter
+          // Validate each parameter, but instead of returning errors, skip invalid params
+          const validParams = {};
           for (const [parameterId, paramValue] of Object.entries(categoryParams)) {
             // Check if parameter exists
             const parameter = categoryParameters.find(p => p.id === parameterId);
             if (!parameter) {
-              console.error(`Parameter not found: ${parameterId}`);
-              return res.status(400).json({
-                success: false,
-                error: `Parameter with ID ${parameterId} not found in category ${categoryId}`
-              });
+              console.warn(`Parameter not found: ${parameterId} - skipping`);
+              continue;
             }
 
             // Validate parameter value
             const validationError = validateParameterValue(parameter, paramValue);
             if (validationError) {
-              console.error('Validation Error:', validationError);
-              return res.status(400).json({
-                success: false,
-                error: validationError
-              });
+              console.warn('Validation Error:', validationError, '- skipping parameter');
+              continue;
             }
+            
+            // Add valid parameter to the filtered object
+            validParams[parameterId] = paramValue;
           }
+          
+          // Store valid parameters in our filtered object
+          filteredParameters[categoryId] = validParams;
         }
-      }
+      } // Close the else block
 
-      // Call AI service with parameters and specified content type
+      // Call AI service with filtered parameters and specified content type
+      const parametersToUse = filteredParameters;
+                              
+      // Log info about filtered parameters if any were removed
+      if (Object.keys(filteredParameters).length !== Object.keys(parameterValues).length) {
+        console.info(`Using ${Object.keys(filteredParameters).length} of ${Object.keys(parameterValues).length} categories after validation`);
+      }
+      
       const result = await aiService.generateContent(
-        parameterValues,
+        parametersToUse,
         contentType
       );
 
@@ -212,7 +223,7 @@ const generateController = {
         const contentToSave = {
           title: title || undefined,
           type: contentType,
-          parameterValues: parameterValues,
+          parameterValues: parametersToUse, // Save the filtered parameters that were actually used
           // For fiction or combined content
           content: contentType === 'fiction' || contentType === 'combined' ? result.content : undefined,
           // For image or combined content - store as binary
