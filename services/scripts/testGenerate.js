@@ -64,7 +64,7 @@ async function testGenerateEndpoint() {
       [category.id]: paramValues
     };
     
-    await axios.post('http://localhost:3001/api/generate', requestBody);
+    await axios.post('http://localhost:3000/api/generate', requestBody);
 
   } catch (error) {
     console.error('Error testing generate endpoint:', error.response ? error.response.data : error);

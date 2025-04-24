@@ -17,16 +17,22 @@ const generateController = require('../controllers/generateController');
  *     GenerationParameters:
  *       type: object
  *       description: >
- *         Object containing selected parameter values for story generation.
- *         Keys are category IDs and values are objects with parameter ID/value pairs.
- *       example:
- *         "cat-a93a010f-0368-4dee-a6d2-b3e1d664dd39":
- *           "param-123456": 5000
- *           "param-234567": true
- *           "param-345678": "Deep Space"
- *       additionalProperties:
- *         type: object
- *         additionalProperties: true
+ *         Object containing parameterValues object that maps category IDs to parameter selections.
+ *         The parameterValues object has category IDs as keys, with each value being an object of parameter ID/value pairs.
+ *       properties:
+ *         parameterValues:
+ *           type: object
+ *           description: Map of category IDs to parameter selections
+ *           example:
+ *             "science-fiction":
+ *               "science-fiction-technology-level": "Near Future"
+ *               "science-fiction-alien-life": true
+ *               "science-fiction-space-exploration-focus": 7
+ *             "fantasy":
+ *               "fantasy-magic-system": "Elemental"
+ *               "fantasy-mythical-creatures": ["Dragons", "Elves"]
+ *       required:
+ *         - parameterValues
  *     
  *     GenerationResponse:
  *       type: object
@@ -77,7 +83,8 @@ const generateController = require('../controllers/generateController');
  *     description: >
  *       Sends the provided parameter selections to the AI service
  *       and returns a generated story that incorporates those elements.
- *       The request body should contain category IDs as keys, with parameter IDs and their values.
+ *       The request body must contain a 'parameterValues' object with category IDs as keys,
+ *       and each category having parameter IDs as keys with their respective values.
  *     tags: [Generation]
  *     requestBody:
  *       required: true
@@ -85,15 +92,20 @@ const generateController = require('../controllers/generateController');
  *         application/json:
  *           schema:
  *             type: object
- *             description: Map of category IDs to parameter selections
+ *             required: [parameterValues]
+ *             properties:
+ *               parameterValues:
+ *                 type: object
+ *                 description: Map of category IDs to parameter selections
  *             example:
- *               "cat-a93a010f-0368-4dee-a6d2-b3e1d664dd39":
- *                 "param-123456": 5000
- *                 "param-234567": true
- *                 "param-345678": "Option 1"
- *               "cat-456789":
- *                 "param-567890": "Anti-hero"
- *                 "param-678901": 3
+ *               parameterValues:
+ *                 "science-fiction":
+ *                   "science-fiction-technology-level": "Near Future"
+ *                   "science-fiction-alien-life": true
+ *                   "science-fiction-space-exploration-focus": 7
+ *                 "fantasy":
+ *                   "fantasy-magic-system": "Elemental"
+ *                   "fantasy-mythical-creatures": ["Dragons", "Elves"]
  *     responses:
  *       200:
  *         description: Story generated successfully

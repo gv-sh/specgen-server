@@ -1,4 +1,256 @@
 {
-  "categories": [],
-  "parameters": []
+  "categories": [
+    {
+      "id": "science-fiction",
+      "name": "Science Fiction",
+      "visibility": "Show",
+      "description": "Stories set in the future with advanced technology"
+    },
+    {
+      "id": "fantasy",
+      "name": "Fantasy",
+      "visibility": "Show",
+      "description": "Stories with magic and mythical creatures"
+    },
+    {
+      "id": "dystopian",
+      "name": "Dystopian Future",
+      "visibility": "Show",
+      "description": "Stories set in bleak futures or post-apocalyptic settings"
+    }
+  ],
+  "parameters": [
+    {
+      "id": "science-fiction-story-length",
+      "name": "Story Length",
+      "type": "Slider",
+      "visibility": "Basic",
+      "categoryId": "science-fiction",
+      "description": "Length of the story in words",
+      "values": [],
+      "config": {
+        "min": 100,
+        "max": 10000,
+        "step": 100
+      }
+    },
+    {
+      "id": "science-fiction-technology-level",
+      "name": "Technology Level",
+      "type": "Dropdown",
+      "visibility": "Basic",
+      "categoryId": "science-fiction",
+      "description": "The level of technological advancement in the story",
+      "values": [
+        {
+          "id": "near-future",
+          "label": "Near Future"
+        },
+        {
+          "id": "advanced",
+          "label": "Advanced"
+        },
+        {
+          "id": "post-singularity",
+          "label": "Post-Singularity"
+        }
+      ],
+      "config": {}
+    },
+    {
+      "id": "science-fiction-alien-life",
+      "name": "Alien Life",
+      "type": "Toggle Switch",
+      "visibility": "Basic",
+      "categoryId": "science-fiction",
+      "description": "Include alien lifeforms in the story",
+      "values": {
+        "on": "Yes",
+        "off": "No"
+      },
+      "config": {}
+    },
+    {
+      "id": "science-fiction-space-exploration-focus",
+      "name": "Space Exploration Focus",
+      "type": "Slider",
+      "visibility": "Basic",
+      "categoryId": "science-fiction",
+      "description": "How much the story focuses on space exploration",
+      "values": [],
+      "config": {
+        "min": 1,
+        "max": 10,
+        "step": 1
+      }
+    },
+    {
+      "id": "fantasy-story-length",
+      "name": "Story Length",
+      "type": "Slider",
+      "visibility": "Basic",
+      "categoryId": "fantasy",
+      "description": "Length of the story in words",
+      "values": [],
+      "config": {
+        "min": 100,
+        "max": 10000,
+        "step": 100
+      }
+    },
+    {
+      "id": "fantasy-magic-system",
+      "name": "Magic System",
+      "type": "Radio Buttons",
+      "visibility": "Basic",
+      "categoryId": "fantasy",
+      "description": "Type of magic system in the story",
+      "values": [
+        {
+          "id": "elemental",
+          "label": "Elemental"
+        },
+        {
+          "id": "divine",
+          "label": "Divine"
+        },
+        {
+          "id": "wild",
+          "label": "Wild"
+        },
+        {
+          "id": "forbidden",
+          "label": "Forbidden"
+        }
+      ],
+      "config": {}
+    },
+    {
+      "id": "fantasy-mythical-creatures",
+      "name": "Mythical Creatures",
+      "type": "Checkbox",
+      "visibility": "Basic",
+      "categoryId": "fantasy",
+      "description": "Mythical creatures to include in the story",
+      "values": [
+        {
+          "id": "dragons",
+          "label": "Dragons"
+        },
+        {
+          "id": "elves",
+          "label": "Elves"
+        },
+        {
+          "id": "dwarves",
+          "label": "Dwarves"
+        },
+        {
+          "id": "unicorns",
+          "label": "Unicorns"
+        },
+        {
+          "id": "merfolk",
+          "label": "Merfolk"
+        }
+      ],
+      "config": {}
+    },
+    {
+      "id": "fantasy-setting",
+      "name": "Setting",
+      "type": "Dropdown",
+      "visibility": "Basic",
+      "categoryId": "fantasy",
+      "description": "The world setting for the story",
+      "values": [
+        {
+          "id": "medieval-europe",
+          "label": "Medieval Europe"
+        },
+        {
+          "id": "ancient-orient",
+          "label": "Ancient Orient"
+        },
+        {
+          "id": "island-realm",
+          "label": "Island Realm"
+        },
+        {
+          "id": "desert-kingdom",
+          "label": "Desert Kingdom"
+        }
+      ],
+      "config": {}
+    },
+    {
+      "id": "dystopian-story-length",
+      "name": "Story Length",
+      "type": "Slider",
+      "visibility": "Basic",
+      "categoryId": "dystopian",
+      "description": "Length of the story in words",
+      "values": [],
+      "config": {
+        "min": 100,
+        "max": 10000,
+        "step": 100
+      }
+    },
+    {
+      "id": "dystopian-society-type",
+      "name": "Society Type",
+      "type": "Dropdown",
+      "visibility": "Basic",
+      "categoryId": "dystopian",
+      "description": "The type of dystopian society",
+      "values": [
+        {
+          "id": "totalitarian",
+          "label": "Totalitarian Regime"
+        },
+        {
+          "id": "post-apocalyptic",
+          "label": "Post-Apocalyptic"
+        },
+        {
+          "id": "corporate",
+          "label": "Corporate Controlled"
+        },
+        {
+          "id": "technological",
+          "label": "Technological Surveillance"
+        }
+      ],
+      "config": {}
+    },
+    {
+      "id": "dystopian-survival-difficulty",
+      "name": "Survival Difficulty",
+      "type": "Slider",
+      "visibility": "Basic",
+      "categoryId": "dystopian",
+      "description": "How difficult survival is in this world",
+      "values": [],
+      "config": {
+        "min": 1,
+        "max": 10,
+        "step": 1
+      }
+    },
+    {
+      "id": "dystopian-hope-level",
+      "name": "Hope Level",
+      "type": "Slider",
+      "visibility": "Basic",
+      "categoryId": "dystopian",
+      "description": "Level of hope present in the story",
+      "values": [],
+      "config": {
+        "min": 1,
+        "max": 10,
+        "step": 1
+      }
+    }
+  ]
 }

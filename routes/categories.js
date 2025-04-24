@@ -42,6 +42,7 @@ router.get('/', categoryController.getAllCategories);
  *         schema:
  *           type: string
  *         description: Category ID
+ *         example: science-fiction
  *     responses:
  *       200:
  *         description: Category details
@@ -86,6 +87,18 @@ router.get('/:id', categoryController.getCategoryById);
  *                 type: string
  *                 enum: [Show, Hide]
  *                 default: Show
+ *                 example: "Show"
+ *           examples:
+ *             basicCategory:
+ *               summary: Basic category with just a name
+ *               value:
+ *                 name: "Science Fiction"
+ *             fullCategory:
+ *               summary: Complete category with all fields
+ *               value:
+ *                 name: "Fantasy"
+ *                 description: "Stories with magic and mythical creatures"
+ *                 visibility: "Show"
  *     responses:
  *       201:
  *         description: Category created successfully
@@ -119,6 +132,7 @@ router.post('/', categoryController.createCategory);
  *         schema:
  *           type: string
  *         description: Category ID
+ *         example: science-fiction
  *     requestBody:
  *       required: true
  *       content:
@@ -128,11 +142,18 @@ router.post('/', categoryController.createCategory);
  *             properties:
  *               name:
  *                 type: string
+ *                 example: "Updated Science Fiction"
  *               description:
  *                 type: string
+ *                 example: "Updated description for science fiction category"
  *               visibility:
  *                 type: string
  *                 enum: [Show, Hide]
+ *                 example: "Show"
+ *           example:
+ *             name: "Updated Science Fiction"
+ *             description: "Updated description for science fiction category"
+ *             visibility: "Show"
  *     responses:
  *       200:
  *         description: Category updated successfully
@@ -166,6 +187,7 @@ router.put('/:id', categoryController.updateCategory);
  *         schema:
  *           type: string
  *         description: Category ID
+ *         example: science-fiction
  *     responses:
  *       200:
  *         description: Category deleted successfully
@@ -179,6 +201,7 @@ router.put('/:id', categoryController.updateCategory);
  *                   example: true
  *                 message:
  *                   type: string
+ *                   example: "Category 'Science Fiction' deleted successfully"
  *                 data:
  *                   type: object
  *                   properties:
@@ -190,6 +213,7 @@ router.put('/:id', categoryController.updateCategory);
  *                         $ref: '#/components/schemas/Parameter'
  *                     parameterCount:
  *                       type: integer
+ *                       example: 3
  *       404:
  *         $ref: '#/components/responses/Error'
  *       500:

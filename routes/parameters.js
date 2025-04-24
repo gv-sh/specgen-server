@@ -84,20 +84,22 @@ router.get('/:id', parameterController.getParameterById);
  *             properties:
  *               name:
  *                 type: string
- *                 example: "Climate Focus"
+ *                 example: "Character Type"
  *               description:
  *                 type: string
- *                 example: "Determines the level of focus on climate change in the story"
+ *                 example: "The type of main character in the story"
  *               type:
  *                 type: string
  *                 enum: [Dropdown, Slider, Toggle Switch, Radio Buttons, Checkbox]
+ *                 example: "Dropdown"
  *               visibility:
  *                 type: string
  *                 enum: [Basic, Advanced]
  *                 default: Basic
+ *                 example: "Basic"
  *               categoryId:
  *                 type: string
- *                 example: "cat-1234"
+ *                 example: "science-fiction"
  *               values:
  *                 oneOf:
  *                   - type: array
@@ -107,25 +109,82 @@ router.get('/:id', parameterController.getParameterById);
  *                       properties:
  *                         id:
  *                           type: string
+ *                           example: "hero"
  *                         label:
  *                           type: string
+ *                           example: "Hero"
+ *                     example: [
+ *                       { "label": "Hero" },
+ *                       { "label": "Villain" },
+ *                       { "label": "Sidekick" }
+ *                     ]
  *                   - type: object
  *                     description: For Toggle Switch type
  *                     properties:
  *                       on:
  *                         type: string
+ *                         example: "Yes"
  *                       off:
  *                         type: string
+ *                         example: "No"
+ *                     example: {
+ *                       "on": "Yes",
+ *                       "off": "No"
+ *                     }
  *               config:
  *                 type: object
  *                 description: For Slider type
  *                 properties:
  *                   min:
  *                     type: number
+ *                     example: 100
  *                   max:
  *                     type: number
+ *                     example: 10000
  *                   step:
  *                     type: number
+ *                     example: 100
+ *                 example: {
+ *                   "min": 100,
+ *                   "max": 10000,
+ *                   "step": 100
+ *                 }
+ *           examples:
+ *             dropdown:
+ *               summary: Example Dropdown Parameter
+ *               value:
+ *                 name: "Character Type"
+ *                 type: "Dropdown"
+ *                 visibility: "Basic"
+ *                 categoryId: "science-fiction"
+ *                 values: [
+ *                   { "label": "Hero" },
+ *                   { "label": "Villain" },
+ *                   { "label": "Sidekick" }
+ *                 ]
+ *             slider:
+ *               summary: Example Slider Parameter
+ *               value:
+ *                 name: "Story Length"
+ *                 type: "Slider"
+ *                 visibility: "Basic"
+ *                 categoryId: "science-fiction"
+ *                 config: {
+ *                   "min": 100,
+ *                   "max": 10000,
+ *                   "step": 100
+ *                 }
+ *             toggle:
+ *               summary: Example Toggle Parameter
+ *               value:
+ *                 name: "Happy Ending"
+ *                 type: "Toggle Switch"
+ *                 visibility: "Basic"
+ *                 categoryId: "science-fiction"
+ *                 values: {
+ *                   "on": "Yes",
+ *                   "off": "No"
+ *                 }
  *     responses:
  *       201:
  *         description: Parameter created successfully
@@ -168,11 +227,14 @@ router.post('/', parameterController.createParameter);
  *             properties:
  *               name:
  *                 type: string
+ *                 example: "Updated Character Type"
  *               description:
  *                 type: string
+ *                 example: "Updated description"
  *               visibility:
  *                 type: string
  *                 enum: [Basic, Advanced]
+ *                 example: "Advanced" 
  *               values:
  *                 oneOf:
  *                   - type: array
@@ -181,23 +243,43 @@ router.post('/', parameterController.createParameter);
  *                       properties:
  *                         id:
  *                           type: string
+ *                           example: "updated-hero"
  *                         label:
  *                           type: string
+ *                           example: "Updated Hero"
+ *                     example: [
+ *                       { "label": "Updated Hero" },
+ *                       { "label": "Updated Villain" }
+ *                     ]
  *                   - type: object
  *                     properties:
  *                       on:
  *                         type: string
+ *                         example: "Updated Yes"
  *                       off:
  *                         type: string
+ *                         example: "Updated No"
+ *                     example: {
+ *                       "on": "Updated Yes",
+ *                       "off": "Updated No"
+ *                     }
  *               config:
  *                 type: object
  *                 properties:
  *                   min:
  *                     type: number
+ *                     example: 200
  *                   max:
  *                     type: number
+ *                     example: 20000
  *                   step:
  *                     type: number
+ *                     example: 200
+ *                 example: {
+ *                   "min": 200,
+ *                   "max": 20000,
+ *                   "step": 200
+ *                 }
  *     responses:
  *       200:
  *         description: Parameter updated successfully
