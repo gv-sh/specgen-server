@@ -1,6 +1,7 @@
 /* global process */
 const fs = require('fs').promises;
 const path = require('path');
+const sqliteService = require('./sqliteService');
 
 // Use test database in development mode
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -13,8 +14,7 @@ const DATABASE_PATH = path.resolve(
 // Default database structure
 const DEFAULT_DATABASE = { 
   categories: [], 
-  parameters: [],
-  generatedContent: []  // New array to store generated content
+  parameters: []
 };
 
 /**
@@ -74,8 +74,7 @@ class DatabaseService {
   #validateDatabaseStructure(data) {
     return {
       categories: Array.isArray(data.categories) ? data.categories : [],
-      parameters: Array.isArray(data.parameters) ? data.parameters : [],
-      generatedContent: Array.isArray(data.generatedContent) ? data.generatedContent : []
+      parameters: Array.isArray(data.parameters) ? data.parameters : []
     };
   }
 
@@ -339,22 +338,7 @@ class DatabaseService {
    * @returns {Promise<Array>} - All generated content matching filters
    */
   async getGeneratedContent(filters = {}) {
-    const data = await this.getData();
-    let content = data.generatedContent || [];
-
-    // Apply filters if provided
-    if (Object.keys(filters).length > 0) {
-      content = content.filter(item => {
-        for (const [key, value] of Object.entries(filters)) {
-          if (item[key] !== value) {
-            return false;
-          }
-        }
-        return true;
-      });
-    }
-
-    return content;
+    return sqliteService.getGeneratedContent(filters);
   }
 
   /**
@@ -363,8 +347,7 @@ class DatabaseService {
    * @returns {Promise<Object|null>} - Content or null if not found
    */
   async getContentById(id) {
-    const data = await this.getData();
-    return (data.generatedContent || []).find(content => content.id === id) || null;
+    return sqliteService.getContentById(id);
   }
 
   /**
@@ -373,13 +356,6 @@ class DatabaseService {
    * @returns {Promise<Object>} - Saved content with ID
    */
   async saveGeneratedContent(content) {
-    const data = await this.getData();
-    
-    // Ensure generatedContent array exists
-    if (!data.generatedContent) {
-      data.generatedContent = [];
-    }
-    
     // Validate content
     if (!content || (typeof content !== 'object')) {
       throw new Error('Invalid content: must be an object');
@@ -404,10 +380,8 @@ class DatabaseService {
       content.updatedAt = content.createdAt;
     }
     
-    // Add content to array
-    data.generatedContent.push(content);
-    await this.saveData(data);
-    return content;
+    // Use SQLite service to save the content
+    return sqliteService.saveGeneratedContent(content);
   }
 
   /**
@@ -417,24 +391,7 @@ class DatabaseService {
    * @returns {Promise<Object|null>} - Updated content or null if not found
    */
   async updateGeneratedContent(id, updates) {
-    const data = await this.getData();
-    
-    // Ensure generatedContent array exists
-    if (!data.generatedContent) {
-      data.generatedContent = [];
-      return null;
-    }
-    
-    const index = data.generatedContent.findIndex(content => content.id === id);
-    
-    if (index === -1) return null;
-    
-    // Update the content and timestamp
-    updates.updatedAt = new Date().toISOString();
-    data.generatedContent[index] = { ...data.generatedContent[index], ...updates };
-    
-    await this.saveData(data);
-    return data.generatedContent[index];
+    return sqliteService.updateGeneratedContent(id, updates);
   }
 
   /**
@@ -443,21 +400,7 @@ class DatabaseService {
    * @returns {Promise<Boolean>} - True if deleted, false if not found
    */
   async deleteGeneratedContent(id) {
-    const data = await this.getData();
-    
-    // Ensure generatedContent array exists
-    if (!data.generatedContent) {
-      data.generatedContent = [];
-      return false;
-    }
-    
-    const initialLength = data.generatedContent.length;
-    
-    // Filter out the content to delete
-    data.generatedContent = data.generatedContent.filter(content => content.id !== id);
-    
-    await this.saveData(data);
-    return data.generatedContent.length < initialLength;
+    return sqliteService.deleteGeneratedContent(id);
   }
 }
 
