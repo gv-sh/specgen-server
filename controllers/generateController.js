@@ -9,8 +9,6 @@ const databaseService = require('../services/databaseService');
  * @returns {String|null} - Error message or null if valid
  */
 function validateParameterValue(parameter, value) {
-  console.log('Validating Parameter:', JSON.stringify(parameter, null, 2));
-  console.log('Validating Value:', value);
 
   // Explicit null/undefined check
   if (value === null || value === undefined) {
@@ -24,79 +22,78 @@ function validateParameterValue(parameter, value) {
         console.error('Invalid dropdown configuration');
         return `Invalid dropdown configuration for parameter "${parameter.name}"`;
       }
-      
+
       // Check if the value matches any of the predefined labels
       const isValidDropdown = parameter.values.some(v => v.label === value);
-      console.log('Dropdown Validation:', isValidDropdown);
-      
+
       if (!isValidDropdown) {
         return `Value "${value}" is not valid for dropdown parameter "${parameter.name}"`;
       }
       break;
-      
+
     case 'Slider':
       const numValue = Number(value);
       if (isNaN(numValue)) {
         return `Value for slider parameter "${parameter.name}" must be a number`;
       }
-      
+
       const min = parameter.config?.min || 0;
       const max = parameter.config?.max || 100;
-      
-      console.log(`Slider Validation: ${numValue} between ${min} and ${max}`);
-      
+
+
+
       if (numValue < min || numValue > max) {
         return `Value ${value} is outside the range [${min}-${max}] for slider parameter "${parameter.name}"`;
       }
       break;
-      
+
     case 'Toggle Switch':
       const isBooleanToggle = typeof value === 'boolean';
-      console.log('Toggle Validation:', isBooleanToggle);
-      
+
+
       if (!isBooleanToggle) {
         return `Value for toggle parameter "${parameter.name}" must be a boolean`;
       }
       break;
-      
+
     case 'Radio Buttons':
       // Ensure values array exists and is populated
       if (!parameter.values || !Array.isArray(parameter.values) || parameter.values.length === 0) {
         return `Invalid radio buttons configuration for parameter "${parameter.name}"`;
       }
-      
+
       const isValidRadio = parameter.values.some(v => v.label === value);
-      console.log('Radio Button Validation:', isValidRadio);
-      
+
+
       if (!isValidRadio) {
         return `Value "${value}" is not valid for radio parameter "${parameter.name}"`;
       }
       break;
-      
+
     case 'Checkbox':
       if (!Array.isArray(value)) {
         return `Value for checkbox parameter "${parameter.name}" must be an array`;
       }
-      
+
       // Ensure values array exists and is populated
       if (!parameter.values || !Array.isArray(parameter.values) || parameter.values.length === 0) {
         return `Invalid checkbox configuration for parameter "${parameter.name}"`;
       }
-      
+
       // Check if all selected values are valid
-      const invalidValues = value.filter(item => 
+      const invalidValues = value.filter(item =>
         !parameter.values.some(v => v.label === item)
       );
-      
+
       if (invalidValues.length > 0) {
         return `Values ${invalidValues.join(', ')} are not valid for checkbox parameter "${parameter.name}"`;
       }
       break;
-      
+
     default:
       return `Unknown parameter type: ${parameter.type}`;
   }
-  
+
   return null;
 }
 
@@ -112,11 +109,11 @@ const generateController = {
    */
   async generate(req, res, next) {
     try {
-      console.log('Generate Request Body:', JSON.stringify(req.body, null, 2));
+
 
       // Extract data from request body
       const { parameterValues } = req.body;
-      
+
       // Validate input parameters exist and are an object
       if (!parameterValues || typeof parameterValues !== 'object') {
         console.error('No parameters or invalid parameters');
@@ -127,12 +124,12 @@ const generateController = {
       }
 
       // Log parameter values for debugging
-      console.log('Parameter Values:', JSON.stringify(parameterValues, null, 2));
-      
+
+
       // Validate each category and its parameters
       for (const [categoryId, categoryParams] of Object.entries(parameterValues)) {
-        console.log(`Processing Category: ${categoryId}`);
-        
+
+
         // Check if category exists
         const category = await databaseService.getCategoryById(categoryId);
         if (!category) {
@@ -142,7 +139,7 @@ const generateController = {
             error: `Category with ID ${categoryId} not found`
           });
         }
-        
+
         // Validate that categoryParams is an object
         if (typeof categoryParams !== 'object' || categoryParams === null) {
           console.error(`Invalid parameters for category ${categoryId}`);
@@ -151,15 +148,15 @@ const generateController = {
             error: `Invalid parameters for category ${categoryId}`
           });
         }
-        
+
         // Get all parameters for this category
         const categoryParameters = await databaseService.getParametersByCategoryId(categoryId);
-        console.log('Category Parameters:', JSON.stringify(categoryParameters, null, 2));
-        
+
+
         // Validate each parameter
         for (const [parameterId, paramValue] of Object.entries(categoryParams)) {
-          console.log(`Validating Parameter: ${parameterId}`);
-          
+
+
           // Check if parameter exists
           const parameter = categoryParameters.find(p => p.id === parameterId);
           if (!parameter) {
@@ -169,7 +166,7 @@ const generateController = {
               error: `Parameter with ID ${parameterId} not found in category ${categoryId}`
             });
           }
-          
+
           // Validate parameter value
           const validationError = validateParameterValue(parameter, paramValue);
           if (validationError) {
@@ -181,13 +178,13 @@ const generateController = {
           }
         }
       }
-      
+
       // Call AI service with parameters
       const result = await aiService.generateContent(
-        parameterValues, 
+        parameterValues,
         'fiction'
       );
-      
+
       if (result.success) {
         // Structure response based on generation type
         const response = {
@@ -195,7 +192,7 @@ const generateController = {
           content: result.content,
           metadata: result.metadata
         };
-        
+
         res.status(200).json(response);
       } else {
         res.status(500).json({
