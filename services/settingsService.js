@@ -1,9 +1,12 @@
 // services/settingsService.js
+/* eslint-disable no-unused-vars */
 const fs = require('fs').promises;
 const path = require('path');
 
 // Settings file path
-const SETTINGS_PATH = path.resolve(__dirname, '../data/settings.json');
+// Construct paths manually without __filename
+let rootDir = path.resolve('.');
+const SETTINGS_PATH = path.join(rootDir, 'data/settings.json');
 
 // Default settings if file doesn't exist
 const DEFAULT_SETTINGS = {
@@ -50,7 +53,7 @@ class SettingsService {
       // Try to read existing settings file
       const fileContents = await fs.readFile(SETTINGS_PATH, 'utf8');
       this.settings = JSON.parse(fileContents);
-    } catch (error) {
+    } catch (_ignored) {
       // If file doesn't exist or has invalid JSON, use defaults
       console.log('Settings file not found or invalid, using defaults');
       this.settings = { ...DEFAULT_SETTINGS };

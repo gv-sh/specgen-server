@@ -11,7 +11,7 @@ const settingsService = require('../services/settingsService');
  */
 function validateParameterValue(parameter, value) {
   // For testing environment, we can be more permissive
-  if (process.env.NODE_ENV === 'test') {
+  if (globalThis.process?.env?.NODE_ENV === 'test') {
     return null;
   }
 
@@ -139,7 +139,7 @@ const generateController = {
       }
 
       // In test mode, skip thorough parameter validation
-      if (process.env.NODE_ENV !== 'test') {
+      if (globalThis.process?.env?.NODE_ENV !== 'test') {
         // Validate each category and its parameters
         for (const [categoryId, categoryParams] of Object.entries(parameterValues)) {
           // Check if category exists

@@ -357,11 +357,11 @@ if (require.main === module) {
   initializeTestData()
     .then(() => {
       console.log('Initialization complete. You can now use Swagger UI to test the API.');
-      process.exit(0);
+      globalThis.process?.exit(0);
     })
     .catch(error => {
       console.error('Initialization failed:', error);
-      process.exit(1);
+      globalThis.process?.exit(1);
     });
 } else {
   // Export the function for use in other modules

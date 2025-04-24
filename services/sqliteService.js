@@ -5,9 +5,11 @@ const fs = require('fs').promises;
 class SQLiteService {
   constructor() {
     // Determine database path based on environment
-    this.dbPath = process.env.NODE_ENV === 'test' 
-      ? path.resolve(__dirname, '../data/test-generated-content.db')
-      : path.resolve(__dirname, '../data/generated-content.db');
+    // Construct paths manually without __filename
+    let rootDir = path.resolve('.');
+    this.dbPath = globalThis.process?.env?.NODE_ENV === 'test' 
+      ? path.join(rootDir, 'data/test-generated-content.db')
+      : path.join(rootDir, 'data/generated-content.db');
     
     // Ensure database directory exists
     this.#ensureDatabaseDirectory();

@@ -1,8 +1,9 @@
 /* global describe, test, expect, beforeAll, jest */
+/* eslint-disable no-unused-vars */
 const { Buffer } = require('buffer');
-const { request, cleanDatabase, initDatabase } = require('./setup');
+const { request, initDatabase } = require('./setup');
 const databaseService = require('../services/databaseService');
-const aiService = require('../services/aiService');
+// aiService is mocked later
 
 const mockImageData = Buffer.from('test-image-data');
 
@@ -202,7 +203,7 @@ describe('Generated Content API Tests', () => {
         id: "science-fiction",
         visibility: "Show"
       });
-    } catch (e) {
+    } catch (_ignored) {
       // Category may already exist, that's fine
     }
 
@@ -217,7 +218,7 @@ describe('Generated Content API Tests', () => {
           { label: "Near Future" }
         ]
       });
-    } catch (e) {
+    } catch (_ignored) {
       // Parameter may already exist, that's fine
     }
     
@@ -253,7 +254,7 @@ describe('Generated Content API Tests', () => {
         id: "fantasy",
         visibility: "Show"
       });
-    } catch (e) {
+    } catch (_ignored) {
       // Category may already exist, that's fine
     }
 
@@ -268,7 +269,7 @@ describe('Generated Content API Tests', () => {
           { label: "Elemental" }
         ]
       });
-    } catch (e) {
+    } catch (_ignored) {
       // Parameter may already exist, that's fine
     }
     

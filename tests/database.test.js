@@ -60,7 +60,7 @@ describe('Database API Tests', () => {
 
   test('POST /api/database/restore - Should successfully restore database from a valid file', async () => {
     // Prepare a temporary file with test data
-    const tempFilePath = path.join(__dirname, 'test-restore.json');
+    const tempFilePath = path.join(path.resolve('.'), 'tests/test-restore.json');
     await fs.writeFile(tempFilePath, JSON.stringify(sampleData));
 
     // Mock saveData method to resolve successfully
@@ -95,7 +95,7 @@ describe('Database API Tests', () => {
 
   test('POST /api/database/restore - Should reject restore with invalid JSON', async () => {
     // Prepare a temporary file with invalid JSON
-    const tempFilePath = path.join(__dirname, 'invalid-test.json');
+    const tempFilePath = path.join(path.resolve('.'), 'tests/invalid-test.json');
     await fs.writeFile(tempFilePath, 'Invalid JSON');
 
     const response = await request
@@ -114,8 +114,8 @@ describe('Database API Tests', () => {
 
   test('POST /api/database/restore - Should reject restore with invalid database structure', async () => {
     // Prepare a temporary file with invalid database structure
-    // eslint-disable-next-line no-undef
-    const tempFilePath = path.join(__dirname, 'invalid-structure.json');
+    // Prepare the file path
+    const tempFilePath = path.join(path.resolve('.'), 'tests/invalid-structure.json');
     await fs.writeFile(tempFilePath, JSON.stringify({
       invalid: 'structure'
     }));
