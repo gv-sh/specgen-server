@@ -1,5 +1,5 @@
 // services/databaseService.js
-const fsExtra = require('fs-extra');
+const fs = require('fs').promises;
 const path = require('path');
 
 // Use test database in development mode
@@ -21,8 +21,9 @@ class DatabaseService {
     try {
       console.log(`Reading database from: ${DATABASE_PATH}`);
       // Check if file exists
-      const exists = await fsExtra.pathExists(DATABASE_PATH);
-      if (!exists) {
+      try {
+        await fs.access(DATABASE_PATH);
+      } catch (err) {
         console.log('Database file does not exist, creating new one');
         // File doesn't exist, create a new one with empty categories and parameters
         const initialData = { categories: [], parameters: [] };
@@ -30,15 +31,15 @@ class DatabaseService {
         return initialData;
       }
       
-      // Read the file with fs-extra for better error handling
-      const data = await fsExtra.readJson(DATABASE_PATH);
+      // Read the file
+      const data = JSON.parse(await fs.readFile(DATABASE_PATH, 'utf8'));
       console.log(`Successfully read database with ${data.categories?.length || 0} categories and ${data.parameters?.length || 0} parameters`);
       return data;
     } catch (error) {
       console.error('Error reading database:', error);
       
       // If the file is corrupted, create a new one
-      if (error.name === 'SyntaxError') {
+      if (error instanceof SyntaxError) {
         console.log('Database file is corrupted, creating new one');
         const initialData = { categories: [], parameters: [] };
         await this.saveData(initialData);
@@ -59,14 +60,10 @@ class DatabaseService {
       console.log(`Saving data to: ${DATABASE_PATH}`);
       
       // Ensure the data directory exists
-      await fsExtra.ensureDir(path.dirname(DATABASE_PATH));
+      await fs.mkdir(path.dirname(DATABASE_PATH), { recursive: true });
       
-      // Write the data to a temp file first
-      const tempPath = `${DATABASE_PATH}.temp`;
-      await fsExtra.writeJson(tempPath, data, { spaces: 2 });
-      
-      // Then rename the temp file to the actual file (atomic operation)
-      await fsExtra.move(tempPath, DATABASE_PATH, { overwrite: true });
+      // Write the data to the file
+      await fs.writeFile(DATABASE_PATH, JSON.stringify(data, null, 2), 'utf8');
       
       console.log('Database saved successfully');
     } catch (error) {

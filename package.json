@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "NODE_ENV=development nodemon index.js",
-    "test": "mkdir -p logs && jest --runInBand --config jest.config.js --colors=true --detectOpenHandles",
+    "test": "jest --runInBand --config jest.config.js --colors=true --detectOpenHandles",
     "test-generate": "node scripts/testGenerate.js"
   },
   "keywords": [
@@ -21,18 +21,14 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "fs-extra": "^11.3.0",
     "multer": "^1.4.5-lts.2",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
-    "@babel/plugin-transform-modules-commonjs": "^7.24.0",
     "@babel/preset-env": "^7.24.0",
-    "babel-jest": "^29.7.0",
     "jest": "^29.7.0",
-    "jest-silent-reporter": "^0.6.0",
     "nodemon": "^3.1.9",
     "supertest": "^6.3.4"
   }

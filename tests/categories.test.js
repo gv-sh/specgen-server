@@ -27,7 +27,6 @@ describe('Category API Tests', () => {
     };
 
     const response = await request.post('/api/categories').send(newCategory);
-    console.log('Create category response:', response.body);
     
     expect(response.status).toBe(201);
     expect(response.body).toHaveProperty('success', true);
@@ -97,7 +96,6 @@ describe('Category API Tests', () => {
     };
 
     const createResponse = await request.post('/api/categories').send(newCategory);
-    console.log('Create category for deletion:', createResponse.body);
     
     if (createResponse.status !== 201 || !createResponse.body.data || !createResponse.body.data.id) {
       console.warn('Skipping delete test - failed to create test category');
