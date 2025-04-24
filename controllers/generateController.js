@@ -110,10 +110,16 @@ const generateController = {
    */
   async generate(req, res, next) {
     try {
-
-
       // Extract data from request body
-      const { parameterValues } = req.body;
+      const { parameterValues, contentType = 'fiction' } = req.body;
+
+      // Validate content type
+      if (contentType !== 'fiction' && contentType !== 'image') {
+        return res.status(400).json({
+          success: false,
+          error: 'Content type must be either "fiction" or "image"'
+        });
+      }
 
       // Validate input parameters exist and are an object
       if (!parameterValues || typeof parameterValues !== 'object') {
@@ -180,17 +186,18 @@ const generateController = {
         }
       }
 
-      // Call AI service with parameters
+      // Call AI service with parameters and specified content type
       const result = await aiService.generateContent(
         parameterValues,
-        'fiction'
+        contentType
       );
 
       if (result.success) {
         // Structure response based on generation type
         const response = {
           success: true,
-          content: result.content,
+          content: contentType === 'fiction' ? result.content : undefined,
+          imageUrl: contentType === 'image' ? result.imageUrl : undefined,
           metadata: result.metadata
         };
 
@@ -198,7 +205,7 @@ const generateController = {
       } else {
         res.status(500).json({
           success: false,
-          error: result.error || 'Failed to generate fiction'
+          error: result.error || `Failed to generate ${contentType}`
         });
       }
     } catch (error) {

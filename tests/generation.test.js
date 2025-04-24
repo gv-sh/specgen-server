@@ -4,15 +4,27 @@ const { request, createTestCategory, createTestParameters, cleanDatabase, initDa
 
 // Mock the AI service to avoid actual API calls
 jest.mock('../services/aiService', () => ({
-  generateContent: jest.fn().mockImplementation(async () => {
-    return {
-      success: true,
-      content: "This is a mocked story based on your parameters!",
-      metadata: {
-        model: "gpt-3.5-turbo-mock",
-        tokens: 50
-      }
-    };
+  generateContent: jest.fn().mockImplementation(async (parameters, type = 'fiction') => {
+    // Return different responses based on content type
+    if (type === 'image') {
+      return {
+        success: true,
+        imageUrl: "https://example.com/generated-image.jpg",
+        metadata: {
+          model: "dall-e-3-mock",
+          prompt: "A test prompt for image generation"
+        }
+      };
+    } else {
+      return {
+        success: true,
+        content: "This is a mocked story based on your parameters!",
+        metadata: {
+          model: "gpt-3.5-turbo-mock",
+          tokens: 50
+        }
+      };
+    }
   })
 }));
 
@@ -201,5 +213,63 @@ describe('Generation API Tests', () => {
     expect(response.body).toHaveProperty('success', false);
     expect(response.body).toHaveProperty('error');
     expect(response.body.error).toContain('must be a boolean');
+  });
+
+  // NEW TESTS FOR IMAGE GENERATION
+  test('POST /api/generate - Should generate fiction content when explicitly requested', async () => {
+    const requestPayload = {
+      parameterValues: {
+        [category.id]: {
+          [parameters.dropdown.id]: parameters.dropdown.values[0].label
+        }
+      },
+      contentType: 'fiction'
+    };
+      
+    const response = await request.post('/api/generate').send(requestPayload);
+    
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('success', true);
+    expect(response.body).toHaveProperty('content');
+    expect(response.body).toHaveProperty('metadata');
+    expect(response.body).not.toHaveProperty('imageUrl');
+  });
+
+  test('POST /api/generate - Should generate image content when requested', async () => {
+    const requestPayload = {
+      parameterValues: {
+        [category.id]: {
+          [parameters.dropdown.id]: parameters.dropdown.values[0].label
+        }
+      },
+      contentType: 'image'
+    };
+      
+    const response = await request.post('/api/generate').send(requestPayload);
+    
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('success', true);
+    expect(response.body).toHaveProperty('imageUrl');
+    expect(response.body).toHaveProperty('metadata');
+    expect(response.body).not.toHaveProperty('content');
+    expect(response.body.metadata).toHaveProperty('prompt');
+  });
+
+  test('POST /api/generate - Should reject invalid content type', async () => {
+    const requestPayload = {
+      parameterValues: {
+        [category.id]: {
+          [parameters.dropdown.id]: parameters.dropdown.values[0].label
+        }
+      },
+      contentType: 'invalid-type'
+    };
+      
+    const response = await request.post('/api/generate').send(requestPayload);
+    
+    expect(response.status).toBe(400);
+    expect(response.body).toHaveProperty('success', false);
+    expect(response.body).toHaveProperty('error');
+    expect(response.body.error).toContain('Content type must be either');
   });
 });

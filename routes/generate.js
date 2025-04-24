@@ -7,7 +7,7 @@ const generateController = require('../controllers/generateController');
  * @swagger
  * tags:
  *   name: Generation
- *   description: Story generation endpoints
+ *   description: Story and image generation endpoints
  */
 
 /**
@@ -31,6 +31,11 @@ const generateController = require('../controllers/generateController');
  *             "fantasy":
  *               "fantasy-magic-system": "Elemental"
  *               "fantasy-mythical-creatures": ["Dragons", "Elves"]
+ *         contentType:
+ *           type: string
+ *           description: Type of content to generate ('fiction' or 'image')
+ *           enum: [fiction, image]
+ *           default: fiction
  *       required:
  *         - parameterValues
  *     
@@ -43,8 +48,12 @@ const generateController = require('../controllers/generateController');
  *           example: true
  *         content:
  *           type: string
- *           description: Generated story content
+ *           description: Generated story content (only provided for fiction type)
  *           example: "The starship Nebula drifted silently through the endless void of space..."
+ *         imageUrl:
+ *           type: string
+ *           description: URL to the generated image (only provided for image type)
+ *           example: "https://example.com/generated-image.jpg"
  *         metadata:
  *           type: object
  *           properties:
@@ -54,11 +63,14 @@ const generateController = require('../controllers/generateController');
  *               example: "gpt-3.5-turbo"
  *             tokens:
  *               type: integer
- *               description: Total tokens used for this generation
+ *               description: Total tokens used for this generation (for fiction type)
  *               example: 1250
+ *             prompt:
+ *               type: string
+ *               description: Prompt used for image generation (for image type)
+ *               example: "A futuristic city with flying vehicles..."
  *       required:
  *         - success
- *         - content
  *         - metadata
  *     
  *     GenerationError:
@@ -79,10 +91,10 @@ const generateController = require('../controllers/generateController');
  * @swagger
  * /api/generate:
  *   post:
- *     summary: Generate a story based on selected parameters
+ *     summary: Generate fiction text or an image based on selected parameters
  *     description: >
  *       Sends the provided parameter selections to the AI service
- *       and returns a generated story that incorporates those elements.
+ *       and returns either a generated story or image URL based on the contentType.
  *       The request body must contain a 'parameterValues' object with category IDs as keys,
  *       and each category having parameter IDs as keys with their respective values.
  *     tags: [Generation]
@@ -97,18 +109,32 @@ const generateController = require('../controllers/generateController');
  *               parameterValues:
  *                 type: object
  *                 description: Map of category IDs to parameter selections
- *             example:
- *               parameterValues:
- *                 "science-fiction":
- *                   "science-fiction-technology-level": "Near Future"
- *                   "science-fiction-alien-life": true
- *                   "science-fiction-space-exploration-focus": 7
- *                 "fantasy":
- *                   "fantasy-magic-system": "Elemental"
- *                   "fantasy-mythical-creatures": ["Dragons", "Elves"]
+ *               contentType:
+ *                 type: string
+ *                 enum: [fiction, image]
+ *                 default: fiction
+ *                 description: Type of content to generate
+ *           examples:
+ *             fictionGeneration:
+ *               summary: Fiction generation request
+ *               value:
+ *                 parameterValues:
+ *                   "science-fiction":
+ *                     "science-fiction-technology-level": "Near Future"
+ *                     "science-fiction-alien-life": true
+ *                     "science-fiction-space-exploration-focus": 7
+ *                 contentType: "fiction"
+ *             imageGeneration:
+ *               summary: Image generation request
+ *               value:
+ *                 parameterValues:
+ *                   "fantasy":
+ *                     "fantasy-magic-system": "Elemental"
+ *                     "fantasy-mythical-creatures": ["Dragons", "Elves"]
+ *                 contentType: "image"
  *     responses:
  *       200:
- *         description: Story generated successfully
+ *         description: Content generated successfully
  *         content:
  *           application/json:
  *             schema:
