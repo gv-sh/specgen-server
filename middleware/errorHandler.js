@@ -2,8 +2,9 @@
 
 /**
  * Global error handler middleware
+ * Express error handlers MUST have 4 parameters: err, req, res, next
  */
-const errorHandler = (err, _req, res) => {
+const errorHandler = (err, req, res, next) => {
   console.error('Error:', err);
   
   // Default error status and message

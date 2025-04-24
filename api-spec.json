@@ -1276,6 +1276,140 @@
         }
       }
     },
+    "/api/health": {
+      "get": {
+        "summary": "Get server health status",
+        "description": "Retrieves system health information and server status",
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Health check successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "healthy"
+                    },
+                    "version": {
+                      "type": "string",
+                      "example": "1.0.0"
+                    },
+                    "uptime": {
+                      "type": "number",
+                      "description": "Server uptime in seconds",
+                      "example": 3600
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2023-04-25T12:34:56.789Z"
+                    },
+                    "memory": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "number",
+                          "description": "Total memory in MB",
+                          "example": 8192
+                        },
+                        "free": {
+                          "type": "number",
+                          "description": "Free memory in MB",
+                          "example": 4096
+                        },
+                        "usage": {
+                          "type": "number",
+                          "description": "Memory usage percentage",
+                          "example": 50
+                        }
+                      }
+                    },
+                    "system": {
+                      "type": "object",
+                      "properties": {
+                        "platform": {
+                          "type": "string",
+                          "example": "linux"
+                        },
+                        "arch": {
+                          "type": "string",
+                          "example": "x64"
+                        },
+                        "cpus": {
+                          "type": "number",
+                          "example": 4
+                        }
+                      }
+                    },
+                    "services": {
+                      "type": "object",
+                      "properties": {
+                        "database": {
+                          "type": "string",
+                          "example": "connected"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Health check failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "unhealthy"
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Database connection failed"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health/ping": {
+      "get": {
+        "summary": "Simple ping endpoint",
+        "description": "Returns a simple response to verify the server is running",
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful ping response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "pong"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/parameters": {
       "get": {
         "summary": "Get all parameters or filter by categoryId",
@@ -1853,12 +1987,16 @@
       "description": "Story and image generation endpoints"
     },
     {
+      "name": "Health",
+      "description": "Server health monitoring endpoints"
+    },
+    {
       "name": "Settings",
       "description": "Application settings management"
     }
   ],
   "_meta": {
-    "generatedAt": "2025-04-24T12:36:58.767Z",
+    "generatedAt": "2025-04-24T13:12:10.947Z",
     "version": "1.0.0"
   }
 }

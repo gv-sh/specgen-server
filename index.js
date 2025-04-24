@@ -67,10 +67,9 @@ if (process.env.NODE_ENV !== 'test') {
   app.use('/api-docs', swaggerRoutes);
 }
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
+// Health check routes
+const healthRoutes = require('./routes/health');
+app.use('/api/health', healthRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
