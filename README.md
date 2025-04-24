@@ -64,6 +64,19 @@ npm run init-db
 
 Access the Swagger UI documentation at `http://localhost:3000/api-docs` when the server is running.
 
+### API Specification
+
+You can generate a static API specification file using:
+```bash
+npm run generate-api-spec
+```
+
+This will create an `api-spec.json` file in the root directory, which can be used by frontend applications for:
+- Type generation (with tools like openapi-typescript)
+- API client generation
+- Mock server setup
+- Documentation
+
 ### Core Endpoints
 
 #### Categories

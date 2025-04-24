@@ -8,7 +8,8 @@
     "dev": "NODE_ENV=development nodemon index.js",
     "test": "jest --runInBand --config jest.config.js --colors=true --detectOpenHandles",
     "init-db": "node scripts/initTestData.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "generate-api-spec": "node scripts/generate-api-spec.js"
   },
   "keywords": [
     "api",
