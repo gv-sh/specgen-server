@@ -10,29 +10,26 @@ const upload = multer({ dest: 'uploads/' });
  * @desc    Download the database file
  * @access  Public
  */
-router.get('/download', async (req, res, next) => {
+router.get('/download', async (req, res) => {
   try {
-    console.log('Download request received');
     const data = await databaseService.getData();
-    console.log('Database data retrieved successfully');
     
     if (!data) {
-      console.error('No data returned from database service');
-      return res.status(500).json({
+      return res.status(404).json({
         success: false,
-        error: 'Failed to retrieve database data'
+        error: 'No database data found'
       });
     }
 
-    // Send the data directly without additional wrapping
     res.json(data);
-    console.log('Database download response sent');
   } catch (error) {
-    console.error('Error in database download:', error);
+    // Use a logging service in production
+    console.warn('Database download error:', error.message);
+    
     res.status(500).json({
       success: false,
       error: 'Failed to download database',
-      details: error.message
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -42,7 +39,7 @@ router.get('/download', async (req, res, next) => {
  * @desc    Restore the database from a file
  * @access  Public
  */
-router.post('/restore', upload.single('file'), async (req, res, next) => {
+router.post('/restore', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -58,6 +55,9 @@ router.post('/restore', upload.single('file'), async (req, res, next) => {
     try {
       data = JSON.parse(fileContent);
     } catch (err) {
+      // Clean up the uploaded file
+      await fs.unlink(req.file.path);
+      
       return res.status(400).json({
         success: false,
         error: 'Invalid JSON file'
@@ -65,7 +65,11 @@ router.post('/restore', upload.single('file'), async (req, res, next) => {
     }
 
     // Validate the data structure
-    if (!data.categories || !data.parameters || !Array.isArray(data.categories) || !Array.isArray(data.parameters)) {
+    if (!data.categories || !data.parameters || 
+        !Array.isArray(data.categories) || !Array.isArray(data.parameters)) {
+      // Clean up the uploaded file
+      await fs.unlink(req.file.path);
+      
       return res.status(400).json({
         success: false,
         error: 'Invalid database structure. File must contain categories and parameters arrays.'
@@ -83,19 +87,22 @@ router.post('/restore', upload.single('file'), async (req, res, next) => {
       message: 'Database restored successfully'
     });
   } catch (error) {
-    console.error('Error in database restore:', error);
     // Clean up the uploaded file in case of error
     if (req.file) {
       try {
         await fs.unlink(req.file.path);
       } catch (unlinkError) {
-        console.error('Error deleting uploaded file:', unlinkError);
+        console.warn('Error deleting uploaded file:', unlinkError);
       }
     }
+
+    // Use a logging service in production
+    console.warn('Database restore error:', error.message);
+    
     res.status(500).json({
       success: false,
       error: 'Failed to restore database',
-      details: error.message
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -105,7 +112,7 @@ router.post('/restore', upload.single('file'), async (req, res, next) => {
  * @desc    Reset the database to empty state
  * @access  Public
  */
-router.post('/reset', async (req, res, next) => {
+router.post('/reset', async (req, res) => {
   try {
     const emptyDatabase = {
       categories: [],
@@ -119,13 +126,15 @@ router.post('/reset', async (req, res, next) => {
       message: 'Database reset successfully'
     });
   } catch (error) {
-    console.error('Error in database reset:', error);
+    // Use a logging service in production
+    console.warn('Database reset error:', error.message);
+    
     res.status(500).json({
       success: false,
       error: 'Failed to reset database',
-      details: error.message
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
-module.exports = router; 
+module.exports = router;

@@ -1,4 +1,3 @@
-// services/databaseService.js
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -9,44 +8,114 @@ const DATABASE_PATH = path.resolve(
   `../data/${isDevelopment ? 'test-database.json' : 'database.json'}`
 );
 
+// Default database structure
+const DEFAULT_DATABASE = { 
+  categories: [], 
+  parameters: [] 
+};
+
 /**
  * Service for handling JSON file database operations
  */
 class DatabaseService {
+  /**
+   * Ensure the database file exists with a valid structure
+   * @private
+   */
+  async #ensureDatabaseFile() {
+    try {
+      // Check if the directory exists
+      await fs.mkdir(path.dirname(DATABASE_PATH), { recursive: true });
+
+      try {
+        // Try to read the existing file
+        await fs.access(DATABASE_PATH);
+      } catch {
+        // File doesn't exist, create with default structure
+        await this.#writeDatabase(DEFAULT_DATABASE);
+      }
+    } catch (error) {
+      // Critical error in file system operations
+      this.#logError('Failed to ensure database file', error);
+      throw new Error('Database initialization failed');
+    }
+  }
+
+  /**
+   * Write data to the database file
+   * @private
+   * @param {Object} data - Data to write
+   */
+  async #writeDatabase(data) {
+    try {
+      // Validate data structure
+      const validatedData = this.#validateDatabaseStructure(data);
+      
+      await fs.writeFile(
+        DATABASE_PATH, 
+        JSON.stringify(validatedData, null, 2), 
+        'utf8'
+      );
+    } catch (error) {
+      this.#logError('Error writing database', error);
+      throw new Error('Database write failed');
+    }
+  }
+
+  /**
+   * Validate and normalize database structure
+   * @private
+   * @param {Object} data - Data to validate
+   * @returns {Object} - Validated database structure
+   */
+  #validateDatabaseStructure(data) {
+    return {
+      categories: Array.isArray(data.categories) ? data.categories : [],
+      parameters: Array.isArray(data.parameters) ? data.parameters : []
+    };
+  }
+
+  /**
+   * Log errors with context
+   * @private
+   * @param {string} message - Error message
+   * @param {Error} error - Error object
+   */
+  #logError(message, error) {
+    if (isDevelopment) {
+      console.error(message, {
+        errorMessage: error.message,
+        errorStack: error.stack,
+        databasePath: DATABASE_PATH
+      });
+    }
+  }
+
   /**
    * Get all data from the database
    * @returns {Promise<Object>} - Database content
    */
   async getData() {
     try {
-      console.log(`Reading database from: ${DATABASE_PATH}`);
-      // Check if file exists
-      try {
-        await fs.access(DATABASE_PATH);
-      } catch (err) {
-        console.log('Database file does not exist, creating new one');
-        // File doesn't exist, create a new one with empty categories and parameters
-        const initialData = { categories: [], parameters: [] };
-        await this.saveData(initialData);
-        return initialData;
-      }
-      
+      // Ensure database file exists
+      await this.#ensureDatabaseFile();
+
       // Read the file
-      const data = JSON.parse(await fs.readFile(DATABASE_PATH, 'utf8'));
-      console.log(`Successfully read database with ${data.categories?.length || 0} categories and ${data.parameters?.length || 0} parameters`);
-      return data;
-    } catch (error) {
-      console.error('Error reading database:', error);
+      const rawData = await fs.readFile(DATABASE_PATH, 'utf8');
       
-      // If the file is corrupted, create a new one
-      if (error instanceof SyntaxError) {
-        console.log('Database file is corrupted, creating new one');
-        const initialData = { categories: [], parameters: [] };
-        await this.saveData(initialData);
-        return initialData;
+      try {
+        // Parse and validate the data
+        const parsedData = JSON.parse(rawData);
+        return this.#validateDatabaseStructure(parsedData);
+      } catch (parseError) {
+        // If parsing fails, reset to default
+        this.#logError('Database file corruption detected', parseError);
+        await this.#writeDatabase(DEFAULT_DATABASE);
+        return DEFAULT_DATABASE;
       }
-      
-      throw error;
+    } catch (error) {
+      this.#logError('Unexpected error reading database', error);
+      return DEFAULT_DATABASE;
     }
   }
 
@@ -57,17 +126,16 @@ class DatabaseService {
    */
   async saveData(data) {
     try {
-      console.log(`Saving data to: ${DATABASE_PATH}`);
-      
-      // Ensure the data directory exists
-      await fs.mkdir(path.dirname(DATABASE_PATH), { recursive: true });
-      
-      // Write the data to the file
-      await fs.writeFile(DATABASE_PATH, JSON.stringify(data, null, 2), 'utf8');
-      
-      console.log('Database saved successfully');
+      // Validate input
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid data: must be an object');
+      }
+
+      // Ensure database file exists and write validated data
+      await this.#ensureDatabaseFile();
+      await this.#writeDatabase(data);
     } catch (error) {
-      console.error('Error saving database:', error);
+      this.#logError('Error saving database', error);
       throw error;
     }
   }
@@ -104,6 +172,11 @@ class DatabaseService {
       data.categories = [];
     }
     
+    // Validate category
+    if (!category || !category.name) {
+      throw new Error('Invalid category: name is required');
+    }
+
     data.categories.push(category);
     await this.saveData(data);
     return category;
@@ -199,6 +272,11 @@ class DatabaseService {
       data.parameters = [];
     }
     
+    // Validate parameter
+    if (!parameter || !parameter.name || !parameter.type) {
+      throw new Error('Invalid parameter: name and type are required');
+    }
+
     data.parameters.push(parameter);
     await this.saveData(data);
     return parameter;

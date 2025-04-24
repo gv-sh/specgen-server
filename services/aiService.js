@@ -13,8 +13,6 @@ class AIService {
     
     if (!this.apiKey) {
       console.error('ERROR: OPENAI_API_KEY not set in environment variables');
-    } else {
-      console.log('OpenAI API Key found, length:', this.apiKey.length);
     }
   }
 
@@ -25,7 +23,7 @@ class AIService {
    * @returns {Promise<Object>} - Generated content from OpenAI
    */
   async generateContent(parameters, type = 'fiction') {
-    console.log(`Generating ${type} with parameters:`, JSON.stringify(parameters, null, 2));
+    
     
     try {
       // Call appropriate generation method based on type
@@ -54,7 +52,7 @@ class AIService {
     try {
       // Format parameters into a clean markdown prompt
       const prompt = this.formatFictionPrompt(parameters);
-      console.log('Fiction generation prompt:', prompt);
+      
       
       // Call OpenAI API
       const response = await axios.post(

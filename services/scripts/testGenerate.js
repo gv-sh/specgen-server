@@ -17,7 +17,7 @@ async function testGenerateEndpoint() {
     
     // Get the first category
     const category = data.categories[0];
-    console.log(`Using category: ${category.name} (${category.id})`);
+    
     
     // Get parameters for this category
     const parameters = data.parameters.filter(p => p.categoryId === category.id);
@@ -65,14 +65,14 @@ async function testGenerateEndpoint() {
       [category.id]: paramValues
     };
     
-    console.log('\nSending request to generate endpoint:');
-    console.log(JSON.stringify(requestBody, null, 2));
+    
+    
     
     // Make the API call
     const response = await axios.post('http://localhost:3001/api/generate', requestBody);
     
-    console.log('\nResponse:');
-    console.log(JSON.stringify(response.data, null, 2));
+    
+    
     
   } catch (error) {
     console.error('Error testing generate endpoint:', error.response ? error.response.data : error);

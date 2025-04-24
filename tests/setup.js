@@ -15,7 +15,7 @@ const TEST_DATABASE_PATH = path.join(__dirname, '../data/test-database.json');
 // Initialize the database file with empty structure
 const initDatabase = async () => {
   try {
-    console.log('Initializing test database...');
+    
     
     // Make sure the directory exists
     await fs.mkdir(path.dirname(DATABASE_PATH), { recursive: true });
@@ -30,7 +30,7 @@ const initDatabase = async () => {
     await fs.writeFile(TEST_DATABASE_PATH, JSON.stringify(initialData, null, 2), 'utf8');
     await fs.copyFile(TEST_DATABASE_PATH, DATABASE_PATH);
     
-    console.log('Test database initialized successfully');
+    
   } catch (e) {
     console.error(`Error initializing test database: ${e.message}`);
     throw e;
@@ -40,7 +40,7 @@ const initDatabase = async () => {
 // Utility function to create a test category
 const createTestCategory = async () => {
   const categoryName = "Test Generation Category";
-  console.log(`Creating test category: ${categoryName}`);
+  
   
   try {
     const response = await request.post('/api/categories').send({
@@ -48,13 +48,13 @@ const createTestCategory = async () => {
       visibility: "Show"
     });
     
-    console.log('Create Category Response:', JSON.stringify(response.body, null, 2));
+    
     
     if (!response.body.success) {
       throw new Error(`Failed to create category: ${JSON.stringify(response.body)}`);
     }
     
-    console.log(`Test category created with ID: ${response.body.data?.id || 'unknown'}`);
+    
     return response.body.data;
   } catch (error) {
     console.error('Error creating test category:', error);
@@ -64,7 +64,7 @@ const createTestCategory = async () => {
 
 // Utility function to clean the database for testing
 const cleanDatabase = async () => {
-  console.log('Cleaning database...');
+  
   
   // Create fresh test database
   const initialData = { 
@@ -76,14 +76,14 @@ const cleanDatabase = async () => {
   await fs.writeFile(TEST_DATABASE_PATH, JSON.stringify(initialData, null, 2));
   await fs.copyFile(TEST_DATABASE_PATH, DATABASE_PATH);
   
-  console.log('Database cleaned successfully');
+  
   return initialData;
 };
 
 // Helper to create standard parameter types
 const createTestParameters = async (categoryId) => {
   try {
-    console.log(`Creating test parameters for category ID: ${categoryId}`);
+    
     
     // Create a dropdown parameter
     const dropdownResponse = await request.post('/api/parameters').send({
@@ -96,7 +96,7 @@ const createTestParameters = async (categoryId) => {
         { label: "Test 2" }
       ]
     });
-    console.log('Dropdown Parameter Response:', JSON.stringify(dropdownResponse.body, null, 2));
+    
     
     // Create a slider parameter
     const sliderResponse = await request.post('/api/parameters').send({
@@ -110,7 +110,7 @@ const createTestParameters = async (categoryId) => {
         step: 1
       }
     });
-    console.log('Slider Parameter Response:', JSON.stringify(sliderResponse.body, null, 2));
+    
 
     // Create a toggle parameter
     const toggleResponse = await request.post('/api/parameters').send({
@@ -123,7 +123,7 @@ const createTestParameters = async (categoryId) => {
         off: "No"
       }
     });
-    console.log('Toggle Parameter Response:', JSON.stringify(toggleResponse.body, null, 2));
+    
 
     return {
       dropdown: dropdownResponse.body.data || {},

@@ -193,8 +193,8 @@ async function initializeDatabase() {
     // Write the data
     await fs.writeJson(DATABASE_PATH, databaseContent, { spaces: 2 });
     
-    console.log('Database initialized with sample data!');
-    console.log('\nSample Generate Request:');
+    
+    
     console.log(JSON.stringify({
       [CATEGORIES.sciFi]: {
         [PARAMETERS.techLevel]: "Near Future",
@@ -203,14 +203,14 @@ async function initializeDatabase() {
       }
     }, null, 2));
     
-    console.log('\nCategory IDs (derived from names):');
+    
     Object.entries(CATEGORIES).forEach(([name, id]) => {
-      console.log(`${name}: ${id}`);
+      
     });
     
-    console.log('\nParameter IDs (derived from category + name):');
+    
     Object.entries(PARAMETERS).forEach(([name, id]) => {
-      console.log(`${name}: ${id}`);
+      
     });
   } catch (error) {
     console.error('Error initializing database:', error);

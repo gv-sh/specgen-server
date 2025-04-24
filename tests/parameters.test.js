@@ -13,7 +13,6 @@ describe('Parameter API Tests', () => {
     
     // Create a test category
     const category = await createTestCategory();
-    console.log('Created test category:', category);
     categoryId = category.id;
   });
 
@@ -54,7 +53,6 @@ describe('Parameter API Tests', () => {
     };
 
     const response = await request.post('/api/parameters').send(newParameter);
-    console.log('Create dropdown response:', response.body);
     
     expect(response.status).toBe(201);
     expect(response.body).toHaveProperty('success', true);
@@ -83,7 +81,7 @@ describe('Parameter API Tests', () => {
     };
 
     const response = await request.post('/api/parameters').send(newParameter);
-    console.log('Create slider response:', response.body);
+    
     
     expect(response.status).toBe(201);
     expect(response.body).toHaveProperty('success', true);
@@ -108,7 +106,7 @@ describe('Parameter API Tests', () => {
     };
 
     const response = await request.post('/api/parameters').send(newParameter);
-    console.log('Create toggle response:', response.body);
+    
     
     expect(response.status).toBe(201);
     expect(response.body).toHaveProperty('success', true);
@@ -200,7 +198,7 @@ describe('Parameter API Tests', () => {
     };
 
     const createResponse = await request.post('/api/parameters').send(newParameter);
-    console.log('Create parameter for deletion:', createResponse.body);
+    
     
     if (createResponse.status !== 201 || !createResponse.body.data || !createResponse.body.data.id) {
       console.warn('Skipping delete test - failed to create test parameter');

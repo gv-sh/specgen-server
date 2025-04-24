@@ -3,7 +3,6 @@ const { request, createTestCategory, createTestParameters, cleanDatabase, initDa
 // Mock the AI service to avoid actual API calls
 jest.mock('../services/aiService', () => ({
   generateContent: jest.fn().mockImplementation(async (parameters) => {
-    console.log('Mocked AI Service Parameters:', JSON.stringify(parameters, null, 2));
     return {
       success: true,
       content: "This is a mocked story based on your parameters!",
@@ -26,7 +25,6 @@ describe('Generation API Tests', () => {
     
     // Create category
     category = await createTestCategory();
-    console.log('Test Category:', JSON.stringify(category, null, 2));
     
     if (!category || !category.id) {
       throw new Error('Failed to create test category');
@@ -34,20 +32,11 @@ describe('Generation API Tests', () => {
     
     // Create parameters
     parameters = await createTestParameters(category.id);
-    console.log('Test Parameters:', JSON.stringify(parameters, null, 2));
     
     if (!parameters.dropdown || !parameters.slider || !parameters.toggle) {
       throw new Error('Failed to create test parameters');
     }
   });
-
-  // Diagnostic helper function
-  const logTestDetails = (testName, payload) => {
-    console.log(`\n--- ${testName} ---`);
-    console.log('Payload:', JSON.stringify(payload, null, 2));
-    console.log('Category ID:', category.id);
-    console.log('Dropdown Parameter:', JSON.stringify(parameters.dropdown, null, 2));
-  };
 
   test('POST /api/generate - Should generate content with dropdown parameter', async () => {
     const requestPayload = {
@@ -57,13 +46,8 @@ describe('Generation API Tests', () => {
         }
       }
     };
-    
-    logTestDetails('Dropdown Parameter Test', requestPayload);
-  
+      
     const response = await request.post('/api/generate').send(requestPayload);
-    
-    console.log('Response Status:', response.status);
-    console.log('Response Body:', JSON.stringify(response.body, null, 2));
     
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('success', true);
