@@ -1,120 +1,130 @@
 # SpecGen Server
 
-The Express backend API for SpecGen, providing endpoints for managing categories and parameters, as well as generating fiction through OpenAI integration.
+A Node.js/Express API for generating speculative fiction stories using AI. Manages fiction categories and their parameters, and provides endpoints for generating content through OpenAI integration.
+
+## Project Structure
+
+SpecGen consists of three modules:
+- **Server (This Repository)**: Backend API
+- **Admin UI**: Interface for managing categories and parameters
+- **User UI**: Interface for generating stories
 
 ## Features
 
-- RESTful API endpoints for categories and parameters
-- OpenAI integration for fiction generation
+- RESTful API for managing fiction categories and parameters
+- OpenAI integration for fiction and image generation
 - Swagger API documentation
 - JSON file-based data storage
-- Environment-based configuration
+- Parameter validation and type handling
 
-## Prerequisites
+## Quick Start
 
-- Node.js (version 14+ recommended)
+### Prerequisites
+
+- Node.js (v14+)
 - npm
 - OpenAI API key
 
-## Setup
+### Installation
 
-1. Install dependencies:
-
+1. Clone the repository
+2. Install dependencies:
    ```bash
    npm install
    ```
-
-2. Configure environment variables:
-   - Create a `.env` file in the server directory
-   - Add your OpenAI API key: `OPENAI_API_KEY=your_key_here`
-   - Set the port: `PORT=3000`
-   - Set the environment: `NODE_ENV=development`
-
-3. Start the server:
-
-   ```bash
-   npm run dev  # For development with nodemon
-   npm start    # For production
+3. Create a `.env` file:
+   ```
+   OPENAI_API_KEY=your_key_here
+   PORT=3000
+   NODE_ENV=development
    ```
 
-## API Endpoints
+### Starting the Server
 
-### Categories
+```bash
+# Development mode with auto-restart
+npm run dev
 
-- `GET /api/categories`: List all categories
-- `GET /api/categories/:id`: Get category details
-- `POST /api/categories`: Create category
-- `PUT /api/categories/:id`: Update category
-- `DELETE /api/categories/:id`: Delete category
-
-### Parameters
-
-- `GET /api/parameters`: List all parameters
-- `GET /api/parameters/:id`: Get parameter details
-- `POST /api/parameters`: Create parameter
-- `PUT /api/parameters/:id`: Update parameter
-- `DELETE /api/parameters/:id`: Delete parameter
-
-### Generation
-
-- `POST /api/generate`: Send parameters to AI service to generate fiction
-
-## Data Structure
-
-Categories and parameters are stored in a JSON file with the following structure:
-
-```json
-{
-  "categories": [
-    {
-      "id": "science-fiction",
-      "name": "Science Fiction",
-      "visibility": "Show"
-    }
-  ],
-  "parameters": [
-    {
-      "id": "science-fiction-technology-level",
-      "name": "Technology Level",
-      "type": "Dropdown",
-      "visibility": "Basic",
-      "categoryId": "science-fiction",
-      "values": [
-        {"id": "near-future", "label": "Near Future"},
-        {"id": "advanced", "label": "Advanced"}
-      ]
-    }
-  ]
-}
+# Production mode
+npm start
 ```
 
-## Parameter Types
+### Initialize Sample Data (Optional)
 
-- **Dropdown**: 4-12 selectable values
-- **Slider**: Min/max value configuration
-- **Toggle Switch**: Two options (binary choice)
-- **Radio Buttons**: 4-7 mutually exclusive options
-- **Checkbox**: 4-7 multi-selectable options
+```bash
+npm run init-db
+```
 
 ## API Documentation
 
-Access Swagger UI:
+Access the Swagger UI documentation at `http://localhost:3000/api-docs` when the server is running.
 
-- Open `http://localhost:3000/api-docs` in your browser
+### Core Endpoints
 
-## Testing
+#### Categories
+- `GET /api/categories` - List all categories
+- `POST /api/categories` - Create a category
+- `GET /api/categories/:id` - Get a category
+- `PUT /api/categories/:id` - Update a category
+- `DELETE /api/categories/:id` - Delete a category
 
-Run tests:
+#### Parameters
+- `GET /api/parameters` - List all parameters
+- `POST /api/parameters` - Create a parameter
+- `GET /api/parameters/:id` - Get a parameter
+- `PUT /api/parameters/:id` - Update a parameter
+- `DELETE /api/parameters/:id` - Delete a parameter
+
+#### Generation
+- `POST /api/generate` - Generate fiction based on parameters
+
+#### Database Management
+- `GET /api/database/download` - Get database content
+- `POST /api/database/restore` - Restore database from file
+- `POST /api/database/reset` - Reset database to empty state
+
+## Parameter Types
+
+The system supports various parameter types for story configuration:
+
+- **Dropdown**: Selection from 4-12 values
+- **Slider**: Numeric value with min/max range
+- **Toggle Switch**: Boolean choice (yes/no)
+- **Radio Buttons**: Mutually exclusive options
+- **Checkbox**: Multiple selectable options
+
+## Development
+
+### Running Tests
 
 ```bash
 npm test
 ```
 
-## Technologies
+### Linting
 
-- Express.js
-- Node.js
-- OpenAI API
-- JSON file-based storage
-- Jest for testing
-- Swagger for API documentation
+```bash
+npm run lint
+```
+
+## Architecture
+
+- **Controllers**: Handle HTTP requests and responses
+- **Services**: Provide core business logic
+- **Routes**: Define API endpoints
+- **Middleware**: Process requests
+- **Data**: JSON-based storage
+
+## Deployment
+
+For deployment on a Digital Ocean Ubuntu droplet, use the provided deployment scripts in the `deploy` directory:
+
+1. `deploy.sh`: Main deployment script for server setup and application installation
+2. `nginx-specgen.conf`: Nginx configuration for hosting all components
+3. `ecosystem.config.js`: PM2 configuration for process management
+
+See the [deployment guide](./deploy/README.md) for detailed instructions.
+
+## License
+
+ISC
