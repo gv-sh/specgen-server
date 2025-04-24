@@ -15,6 +15,6 @@ module.exports = {
   },
   reporters: ['<rootDir>/reporters/customReporter.js'],
   verbose: false,
-  silent: true,
+  silent: true, // Keep silent to prevent default console output
   noStackTrace: true
 };

@@ -14,6 +14,41 @@ const request = supertest(app);
 const DATABASE_PATH = path.join(__dirname, '../data/database.json');
 const TEST_DATABASE_PATH = path.join(__dirname, '../data/test-database.json');
 
+// Add request logging for detailed API request/response logs
+const originalSend = supertest.Test.prototype.send;
+supertest.Test.prototype.send = function(data) {
+  this._data = data;
+  return originalSend.apply(this, arguments);
+};
+
+const originalEnd = supertest.Test.prototype.end;
+supertest.Test.prototype.end = function(fn) {
+  const test = this;
+  return originalEnd.call(this, function(err, res) {
+    // Log request and response details
+    console.log(`API Request: ${test.method} ${test.url}`, {
+      method: test.method,
+      url: test.url,
+      data: test._data
+    });
+    
+    if (err) {
+      console.error(`API Response Error:`, {
+        error: err.message,
+        status: res ? res.status : 'unknown'
+      });
+    } else {
+      console.log(`API Response: ${res.status}`, {
+        status: res.status,
+        headers: res.headers,
+        body: res.body
+      });
+    }
+    
+    if (fn) fn(err, res);
+  });
+};
+
 // Convert name to a slug suitable for use as an ID
 function nameToId(name) {
   return name.replace(/\s+/g, '-').toLowerCase();
@@ -22,6 +57,8 @@ function nameToId(name) {
 // Initialize the database file with valid JSON if it doesn't exist
 const initDatabase = async () => {
   try {
+    console.log('Initializing test database...');
+    
     // Make sure the directory exists
     await fs.mkdir(path.dirname(DATABASE_PATH), { recursive: true });
     
@@ -38,6 +75,7 @@ const initDatabase = async () => {
     // Use fs-extra to ensure atomic file operations
     await fsExtra.copy(TEST_DATABASE_PATH, DATABASE_PATH);
     
+    console.log('Test database initialized successfully');
   } catch (e) {
     console.error('Error initializing test database:', e);
     throw e;
@@ -47,16 +85,21 @@ const initDatabase = async () => {
 // Utility function to create a clean test category
 const createTestCategory = async () => {
   const categoryName = "Test Category";
+  console.log(`Creating test category: ${categoryName}`);
+  
   const response = await request.post('/api/categories').send({
     name: categoryName,
     visibility: "Show"
   });
   
+  console.log(`Test category created with ID: ${response.body.data?.id || 'unknown'}`);
   return response.body.data;
 };
 
 // Utility function to clean the database for testing
 const cleanDatabase = async () => {
+  console.log('Cleaning database...');
+  
   // Create fresh test database
   const initialData = { 
     categories: [], 
@@ -67,12 +110,15 @@ const cleanDatabase = async () => {
   await fsExtra.writeJson(TEST_DATABASE_PATH, initialData, { spaces: 2 });
   await fsExtra.copy(TEST_DATABASE_PATH, DATABASE_PATH, { overwrite: true });
   
+  console.log('Database cleaned successfully');
   return initialData;
 };
 
 // Helper to create standard parameter types
 const createTestParameters = async (categoryId) => {
   try {
+    console.log(`Creating test parameters for category ID: ${categoryId}`);
+    
     // Create a dropdown parameter
     const dropdownResponse = await request.post('/api/parameters').send({
       name: "Test Dropdown",
@@ -84,6 +130,7 @@ const createTestParameters = async (categoryId) => {
         { label: "Test 2" }
       ]
     });
+    console.log(`Created dropdown parameter with ID: ${dropdownResponse.body.data?.id || 'unknown'}`);
 
     // Create a slider parameter
     const sliderResponse = await request.post('/api/parameters').send({
@@ -97,6 +144,7 @@ const createTestParameters = async (categoryId) => {
         step: 1
       }
     });
+    console.log(`Created slider parameter with ID: ${sliderResponse.body.data?.id || 'unknown'}`);
 
     // Create a toggle parameter
     const toggleResponse = await request.post('/api/parameters').send({
@@ -109,6 +157,7 @@ const createTestParameters = async (categoryId) => {
         off: "No"
       }
     });
+    console.log(`Created toggle parameter with ID: ${toggleResponse.body.data?.id || 'unknown'}`);
 
     return {
       dropdown: dropdownResponse.body.data || {},
@@ -123,14 +172,18 @@ const createTestParameters = async (categoryId) => {
 
 // Make sure we use a clean database before each test
 beforeAll(async () => {
+  console.log('Setting up test environment...');
   await initDatabase();
   await cleanDatabase();
+  console.log('Test environment ready');
 });
 
 // Reset the database after all tests complete
 afterAll(async () => {
+  console.log('Cleaning up test environment...');
   // Restore a clean state
   await cleanDatabase();
+  console.log('Test environment cleanup complete');
 });
 
 module.exports = {
