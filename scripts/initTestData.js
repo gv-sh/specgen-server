@@ -23,8 +23,12 @@ async function initializeTestData() {
       console.log(`Added ${params.length} parameters to category "${category.name}"`);
     }
 
-    console.log(`Initialization complete: ${categories.length} categories, ${totalParams} parameters`);
-    return { categories, totalParams };
+    // Create sample generated content
+    const content = await createSampleContent();
+    console.log(`Added ${content.length} sample generated content items`);
+
+    console.log(`Initialization complete: ${categories.length} categories, ${totalParams} parameters, ${content.length} content items`);
+    return { categories, totalParams, content };
   } catch (error) {
     console.error('Error initializing test data:', error);
     throw error;
@@ -38,7 +42,8 @@ async function resetDatabase() {
   try {
     const emptyDatabase = {
       categories: [],
-      parameters: []
+      parameters: [],
+      generatedContent: []
     };
     await databaseService.saveData(emptyDatabase);
     console.log('Database reset successfully');
@@ -264,6 +269,85 @@ async function createParametersForCategory(categoryId) {
     return createdParameters;
   } catch (error) {
     console.error(`Error creating parameters for category ${categoryId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Create sample generated content for testing
+ */
+async function createSampleContent() {
+  try {
+    const sampleContent = [
+      {
+        id: "content-1713974400000-123",
+        title: "Mars Colony Adventure",
+        type: "fiction",
+        content: "The red dust of Mars swirled around Dr. Elena Vasquez as she stepped out of the colony's airlock. The thin atmosphere of the red planet meant that even with the recent terraforming efforts, she still needed her lightweight exosuit for excursions. It had been fifteen years since the first permanent human settlement on Mars, and the New Olympus colony had grown from a small research outpost to a thriving community of three thousand people.\n\nElena checked her tablet, reviewing the aerial scans of Region 7, an unexplored area about twenty kilometers north of the colony. The satellite imagery had shown unusual formations that might be evidence of ancient water flows. As the colony's lead geologist, she was tasked with investigating these potential sites for water extraction.\n\n\"Base to Dr. Vasquez, do you copy?\" The voice of Mission Control crackled through her comm system.\n\n\"Vasquez here. I'm just leaving the colony now,\" she responded, walking toward the rover parked nearby.\n\n\"Be advised, we're picking up increasing wind speeds in your target area. Dust storm potential within the next six hours.\"\n\n\"Understood. I'll keep the excursion brief,\" Elena replied as she climbed into the rover. The vehicle hummed to life, its solar panels gleaming in the pale Martian sunlight.",
+        parameterValues: {
+          "science-fiction": {
+            "science-fiction-technology-level": "Near Future",
+            "science-fiction-alien-life": false,
+            "science-fiction-space-exploration-focus": 7
+          }
+        },
+        metadata: {
+          model: "gpt-4o-mini",
+          tokens: 384
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: "content-1713974500000-456",
+        title: "Dragon Castle",
+        type: "image",
+        imageUrl: "https://example.com/images/dragon-castle.jpg",
+        parameterValues: {
+          "fantasy": {
+            "fantasy-magic-system": "Elemental",
+            "fantasy-mythical-creatures": ["Dragons", "Elves"],
+            "fantasy-setting": "Medieval Europe"
+          }
+        },
+        metadata: {
+          model: "dall-e-3",
+          prompt: "Create a detailed, visually striking image with the following elements: A medieval European castle with a massive red dragon perched on its highest tower. Elves with bows stand on the battlements, preparing to defend against an unseen threat. The magic system is elemental, so show glowing runes of fire, water, earth and air around the castle walls."
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: "content-1713974600000-789",
+        title: "The Last City",
+        type: "fiction",
+        content: "The dome of the Last City glittered in the harsh sunlight, a pristine bubble of civilization amidst the ruined landscape. From her vantage point on the hill, Maya could see the stark contrast between the lush greenery inside and the barren wasteland outside. It had been thirty years since the Great Collapse, and humanity had been reduced to a handful of enclosed cities scattered across what was once a thriving global civilization.\n\nMaya adjusted her breathing mask and checked the radiation levels on her wrist scanner. Outside the city's protective barrier, the air was still toxic in most regions, though levels had begun to decrease in recent years. As one of the few authorized scouts, she was tasked with venturing into the wasteland to search for resources and any signs of other survivors.\n\nThe weight of her mission pressed heavily upon her. The Last City's recycling systems were failing, and without new components, the dome would begin to degrade within months. Their only hope was to locate an abandoned tech facility rumored to exist in the ruins of the old capital, about forty kilometers east.",
+        parameterValues: {
+          "dystopian": {
+            "dystopian-society-type": "Post-Apocalyptic",
+            "dystopian-survival-difficulty": 8,
+            "dystopian-hope-level": 3
+          }
+        },
+        metadata: {
+          model: "gpt-4o-mini",
+          tokens: 320
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ];
+
+    // Save each content item
+    const createdContent = [];
+    for (const content of sampleContent) {
+      const created = await databaseService.saveGeneratedContent(content);
+      createdContent.push(created);
+    }
+
+    return createdContent;
+  } catch (error) {
+    console.error('Error creating sample content:', error);
     throw error;
   }
 }

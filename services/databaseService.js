@@ -13,7 +13,8 @@ const DATABASE_PATH = path.resolve(
 // Default database structure
 const DEFAULT_DATABASE = { 
   categories: [], 
-  parameters: [] 
+  parameters: [],
+  generatedContent: []  // New array to store generated content
 };
 
 /**
@@ -73,7 +74,8 @@ class DatabaseService {
   #validateDatabaseStructure(data) {
     return {
       categories: Array.isArray(data.categories) ? data.categories : [],
-      parameters: Array.isArray(data.parameters) ? data.parameters : []
+      parameters: Array.isArray(data.parameters) ? data.parameters : [],
+      generatedContent: Array.isArray(data.generatedContent) ? data.generatedContent : []
     };
   }
 
@@ -329,6 +331,133 @@ class DatabaseService {
     
     await this.saveData(data);
     return data.parameters.length < initialLength;
+  }
+
+  /**
+   * Get all generated content
+   * @param {Object} filters - Optional filters (type, title, etc.)
+   * @returns {Promise<Array>} - All generated content matching filters
+   */
+  async getGeneratedContent(filters = {}) {
+    const data = await this.getData();
+    let content = data.generatedContent || [];
+
+    // Apply filters if provided
+    if (Object.keys(filters).length > 0) {
+      content = content.filter(item => {
+        for (const [key, value] of Object.entries(filters)) {
+          if (item[key] !== value) {
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+
+    return content;
+  }
+
+  /**
+   * Get generated content by ID
+   * @param {String} id - Content ID
+   * @returns {Promise<Object|null>} - Content or null if not found
+   */
+  async getContentById(id) {
+    const data = await this.getData();
+    return (data.generatedContent || []).find(content => content.id === id) || null;
+  }
+
+  /**
+   * Create and save generated content
+   * @param {Object} content - Generated content with metadata
+   * @returns {Promise<Object>} - Saved content with ID
+   */
+  async saveGeneratedContent(content) {
+    const data = await this.getData();
+    
+    // Ensure generatedContent array exists
+    if (!data.generatedContent) {
+      data.generatedContent = [];
+    }
+    
+    // Validate content
+    if (!content || (typeof content !== 'object')) {
+      throw new Error('Invalid content: must be an object');
+    }
+    
+    // If no title provided, generate one
+    if (!content.title) {
+      const contentType = content.type || 'fiction';
+      content.title = `${contentType.charAt(0).toUpperCase() + contentType.slice(1)} ${new Date().toISOString().slice(0, 10)}`;
+    }
+    
+    // Set ID and creation timestamp if not provided
+    if (!content.id) {
+      content.id = `content-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    }
+    
+    if (!content.createdAt) {
+      content.createdAt = new Date().toISOString();
+    }
+    
+    if (!content.updatedAt) {
+      content.updatedAt = content.createdAt;
+    }
+    
+    // Add content to array
+    data.generatedContent.push(content);
+    await this.saveData(data);
+    return content;
+  }
+
+  /**
+   * Update generated content
+   * @param {String} id - Content ID
+   * @param {Object} updates - Updated content data
+   * @returns {Promise<Object|null>} - Updated content or null if not found
+   */
+  async updateGeneratedContent(id, updates) {
+    const data = await this.getData();
+    
+    // Ensure generatedContent array exists
+    if (!data.generatedContent) {
+      data.generatedContent = [];
+      return null;
+    }
+    
+    const index = data.generatedContent.findIndex(content => content.id === id);
+    
+    if (index === -1) return null;
+    
+    // Update the content and timestamp
+    updates.updatedAt = new Date().toISOString();
+    data.generatedContent[index] = { ...data.generatedContent[index], ...updates };
+    
+    await this.saveData(data);
+    return data.generatedContent[index];
+  }
+
+  /**
+   * Delete generated content
+   * @param {String} id - Content ID
+   * @returns {Promise<Boolean>} - True if deleted, false if not found
+   */
+  async deleteGeneratedContent(id) {
+    const data = await this.getData();
+    
+    // Ensure generatedContent array exists
+    if (!data.generatedContent) {
+      data.generatedContent = [];
+      return false;
+    }
+    
+    const initialLength = data.generatedContent.length;
+    
+    // Filter out the content to delete
+    data.generatedContent = data.generatedContent.filter(content => content.id !== id);
+    
+    await this.saveData(data);
+    return data.generatedContent.length < initialLength;
   }
 }
 

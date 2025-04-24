@@ -18,21 +18,59 @@ const TEST_DATABASE_PATH = path.join(__dirname, '../data/test-database.json');
 // Initialize the database file with empty structure
 const initDatabase = async () => {
   try {
-    
-    
     // Make sure the directory exists
     await fs.mkdir(path.dirname(DATABASE_PATH), { recursive: true });
     
-    // Create a test database with empty structure
+    // Create a test database structure
     const initialData = { 
-      categories: [], 
-      parameters: [] 
+      categories: [
+        {
+          id: 'science-fiction',
+          name: 'Science Fiction',
+          visibility: 'Show',
+          description: 'Stories set in the future with advanced technology'
+        },
+        {
+          id: 'fantasy',
+          name: 'Fantasy',
+          visibility: 'Show',
+          description: 'Stories with magic and mythical creatures'
+        }
+      ], 
+      parameters: [
+        {
+          id: 'science-fiction-technology-level',
+          name: 'Technology Level',
+          type: 'Dropdown',
+          visibility: 'Basic',
+          categoryId: 'science-fiction',
+          description: 'The level of technological advancement in the story',
+          values: [
+            { id: 'near-future', label: 'Near Future' },
+            { id: 'advanced', label: 'Advanced' }
+          ],
+          config: {}
+        },
+        {
+          id: 'fantasy-magic-system',
+          name: 'Magic System',
+          type: 'Dropdown',
+          visibility: 'Basic',
+          categoryId: 'fantasy',
+          description: 'Type of magic system in the story',
+          values: [
+            { id: 'elemental', label: 'Elemental' },
+            { id: 'divine', label: 'Divine' }
+          ],
+          config: {}
+        }
+      ],
+      generatedContent: []
     };
     
     // Write initial data
     await fs.writeFile(TEST_DATABASE_PATH, JSON.stringify(initialData, null, 2), 'utf8');
     await fs.copyFile(TEST_DATABASE_PATH, DATABASE_PATH);
-    
     
   } catch (e) {
     console.error(`Error initializing test database: ${e.message}`);
@@ -44,19 +82,15 @@ const initDatabase = async () => {
 const createTestCategory = async () => {
   const categoryName = "Test Generation Category";
   
-  
   try {
     const response = await request.post('/api/categories').send({
       name: categoryName,
       visibility: "Show"
     });
     
-    
-    
     if (!response.body.success) {
       throw new Error(`Failed to create category: ${JSON.stringify(response.body)}`);
     }
-    
     
     return response.body.data;
   } catch (error) {
@@ -67,18 +101,56 @@ const createTestCategory = async () => {
 
 // Utility function to clean the database for testing
 const cleanDatabase = async () => {
-  
-  
   // Create fresh test database
   const initialData = { 
-    categories: [], 
-    parameters: [] 
+    categories: [
+      {
+        id: 'science-fiction',
+        name: 'Science Fiction',
+        visibility: 'Show',
+        description: 'Stories set in the future with advanced technology'
+      },
+      {
+        id: 'fantasy',
+        name: 'Fantasy',
+        visibility: 'Show',
+        description: 'Stories with magic and mythical creatures'
+      }
+    ], 
+    parameters: [
+      {
+        id: 'science-fiction-technology-level',
+        name: 'Technology Level',
+        type: 'Dropdown',
+        visibility: 'Basic',
+        categoryId: 'science-fiction',
+        description: 'The level of technological advancement in the story',
+        values: [
+          { id: 'near-future', label: 'Near Future' },
+          { id: 'advanced', label: 'Advanced' }
+        ],
+        config: {}
+      },
+      {
+        id: 'fantasy-magic-system',
+        name: 'Magic System',
+        type: 'Dropdown',
+        visibility: 'Basic',
+        categoryId: 'fantasy',
+        description: 'Type of magic system in the story',
+        values: [
+          { id: 'elemental', label: 'Elemental' },
+          { id: 'divine', label: 'Divine' }
+        ],
+        config: {}
+      }
+    ],
+    generatedContent: []
   };
   
   // Write initial data
   await fs.writeFile(TEST_DATABASE_PATH, JSON.stringify(initialData, null, 2));
   await fs.copyFile(TEST_DATABASE_PATH, DATABASE_PATH);
-  
   
   return initialData;
 };
@@ -86,8 +158,6 @@ const cleanDatabase = async () => {
 // Helper to create standard parameter types
 const createTestParameters = async (categoryId) => {
   try {
-    
-    
     // Create a dropdown parameter
     const dropdownResponse = await request.post('/api/parameters').send({
       name: "Test Dropdown",
@@ -99,7 +169,6 @@ const createTestParameters = async (categoryId) => {
         { label: "Test 2" }
       ]
     });
-    
     
     // Create a slider parameter
     const sliderResponse = await request.post('/api/parameters').send({
@@ -114,7 +183,6 @@ const createTestParameters = async (categoryId) => {
       }
     });
     
-
     // Create a toggle parameter
     const toggleResponse = await request.post('/api/parameters').send({
       name: "Test Toggle",
@@ -127,7 +195,6 @@ const createTestParameters = async (categoryId) => {
       }
     });
     
-
     return {
       dropdown: dropdownResponse.body.data || {},
       slider: sliderResponse.body.data || {},
@@ -148,7 +215,6 @@ function nameToId(name) {
 // Setup and cleanup
 beforeAll(async () => {
   await initDatabase();
-  await cleanDatabase();
 });
 
 afterAll(async () => {

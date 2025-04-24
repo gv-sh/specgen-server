@@ -22,7 +22,7 @@ describe('Category API Tests', () => {
 
   test('POST /api/categories - Should create a new category', async () => {
     const newCategory = {
-      name: 'Science Fiction',
+      name: 'Alternate History', // Changed from 'Science Fiction' to avoid conflict
       visibility: 'Show'
     };
 
@@ -50,7 +50,7 @@ describe('Category API Tests', () => {
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('success', true);
     expect(response.body.data).toHaveProperty('id', categoryId);
-    expect(response.body.data).toHaveProperty('name', 'Science Fiction');
+    expect(response.body.data).toHaveProperty('name', 'Alternate History'); // Updated to match new category name
   });
 
   test('PUT /api/categories/:id - Should update a category', async () => {
@@ -61,9 +61,9 @@ describe('Category API Tests', () => {
     }
     
     const updatedCategory = {
-      name: 'Updated Science Fiction',
+      name: 'Updated Alternate History', // Updated to match new category name
       visibility: 'Show',
-      description: 'Updated description for science fiction category'
+      description: 'Updated description for alternate history category'
     };
 
     const response = await request.put(`/api/categories/${categoryId}`).send(updatedCategory);
