@@ -7,7 +7,6 @@
     "start": "node index.js",
     "dev": "NODE_ENV=development nodemon index.js",
     "test": "jest --runInBand --config jest.config.js --colors=true --detectOpenHandles",
-    "test-generate": "node scripts/testGenerate.js",
     "init-db": "node scripts/initTestData.js",
     "lint": "eslint ."
   },
