@@ -58,7 +58,7 @@ class AIService {
       const maxTokens = await settingsService.getSetting('ai.parameters.fiction.max_tokens', 1000);
       
       // Format parameters into a clean markdown prompt
-      const prompt = this.formatFictionPrompt(parameters);
+      const prompt = await this.formatFictionPrompt(parameters);
       
       // Get system prompt from settings
       const systemPrompt = await settingsService.getSetting(
