@@ -67,7 +67,7 @@ const parameterController = {
    */
   async createParameter(req, res, next) {
     try {
-      const { name, type, visibility, categoryId, values, config, description } = req.body;
+      const { name, type, visibility, categoryId, values, config, description, required } = req.body;
       
       // Validate required fields
       if (!name || !type || !categoryId) {
@@ -145,6 +145,7 @@ const parameterController = {
         visibility: visibility || 'Basic',
         categoryId,
         description: description || '',
+        required: required !== undefined ? required : false,
         values: processedValues || [],
         config: config || {}
       };
@@ -169,7 +170,7 @@ const parameterController = {
   async updateParameter(req, res, next) {
     try {
       const { id } = req.params;
-      const { name, type, visibility, categoryId, values, config, description } = req.body;
+      const { name, type, visibility, categoryId, values, config, description, required } = req.body;
       
       // Check if parameter exists
       const existingParameter = await databaseService.getParameterById(id);
@@ -216,6 +217,7 @@ const parameterController = {
       if (visibility) updateData.visibility = visibility;
       if (categoryId) updateData.categoryId = categoryId;
       if (description !== undefined) updateData.description = description;
+      if (required !== undefined) updateData.required = required;
       if (values) updateData.values = values;
       if (config) updateData.config = config;
       

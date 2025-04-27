@@ -100,6 +100,11 @@ router.get('/:id', parameterController.getParameterById);
  *               categoryId:
  *                 type: string
  *                 example: "science-fiction"
+ *               required:
+ *                 type: boolean
+ *                 description: "Whether this parameter is required"
+ *                 default: false
+ *                 example: true
  *               values:
  *                 oneOf:
  *                   - type: array
@@ -157,6 +162,7 @@ router.get('/:id', parameterController.getParameterById);
  *                 type: "Dropdown"
  *                 visibility: "Basic"
  *                 categoryId: "science-fiction"
+ *                 required: true
  *                 values: [
  *                   { "label": "Hero" },
  *                   { "label": "Villain" },
@@ -169,6 +175,7 @@ router.get('/:id', parameterController.getParameterById);
  *                 type: "Slider"
  *                 visibility: "Basic"
  *                 categoryId: "science-fiction"
+ *                 required: false
  *                 config: {
  *                   "min": 100,
  *                   "max": 10000,
@@ -181,6 +188,7 @@ router.get('/:id', parameterController.getParameterById);
  *                 type: "Toggle Switch"
  *                 visibility: "Basic"
  *                 categoryId: "science-fiction"
+ *                 required: false
  *                 values: {
  *                   "on": "Yes",
  *                   "off": "No"
@@ -234,7 +242,10 @@ router.post('/', parameterController.createParameter);
  *               visibility:
  *                 type: string
  *                 enum: [Basic, Advanced]
- *                 example: "Advanced" 
+ *                 example: "Advanced"
+ *               required:
+ *                 type: boolean
+ *                 example: true
  *               values:
  *                 oneOf:
  *                   - type: array
