@@ -16,6 +16,8 @@ dist/
 build/
 coverage/
 uploads/
+data/*.db
+data/*.json
 
 # IDE and editor files
 .idea/
