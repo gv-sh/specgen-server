@@ -118,8 +118,8 @@ const generateController = {
       // Get default content type from settings
       const defaultContentType = await settingsService.getSetting('defaults.content_type', 'fiction');
       
-      // Extract data from request body
-      const { parameterValues, contentType = defaultContentType, title } = req.body;
+      // Extract data from request body, including year parameter
+      const { parameterValues, contentType = defaultContentType, title, year } = req.body;
 
       // Validate content type
       if (contentType !== 'fiction' && contentType !== 'image' && contentType !== 'combined') {
@@ -193,7 +193,7 @@ const generateController = {
         }
       } // Close the else block
 
-      // Call AI service with filtered parameters and specified content type
+      // Call AI service with filtered parameters, specified content type, and year
       const parametersToUse = filteredParameters;
                               
       // Log info about filtered parameters if any were removed
@@ -203,7 +203,8 @@ const generateController = {
       
       const result = await aiService.generateContent(
         parametersToUse,
-        contentType
+        contentType,
+        year
       );
 
       if (result.success) {
@@ -211,6 +212,8 @@ const generateController = {
         const responseData = {
           success: true,
           content: contentType === 'fiction' || contentType === 'combined' ? result.content : undefined,
+          title: result.title || title || "Untitled Story", // Include extracted or provided title
+          year: year || result.year, // Include year parameter
           metadata: result.metadata
         };
 
@@ -219,9 +222,10 @@ const generateController = {
           responseData.imageData = result.imageData.toString('base64');
         }
 
-        // Save the generated content to the database
+        // Save the generated content to the database with year and title
         const contentToSave = {
-          title: title || undefined,
+          title: result.title || title || "Untitled Story", // Save extracted or provided title
+          year: year || result.year, // Save year parameter
           type: contentType,
           parameterValues: parametersToUse, // Save the filtered parameters that were actually used
           // For fiction or combined content
@@ -236,6 +240,7 @@ const generateController = {
         // Add the saved ID to the response
         responseData.id = savedContent.id;
         responseData.title = savedContent.title;
+        responseData.year = savedContent.year;
         responseData.createdAt = savedContent.createdAt;
 
         res.status(200).json(responseData);

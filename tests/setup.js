@@ -28,13 +28,15 @@ const initDatabase = async () => {
           id: 'science-fiction',
           name: 'Science Fiction',
           visibility: 'Show',
-          description: 'Stories set in the future with advanced technology'
+          description: 'Stories set in the future with advanced technology',
+          year: 2150
         },
         {
           id: 'fantasy',
           name: 'Fantasy',
           visibility: 'Show',
-          description: 'Stories with magic and mythical creatures'
+          description: 'Stories with magic and mythical creatures',
+          year: 1250
         }
       ], 
       parameters: [
@@ -85,7 +87,8 @@ const createTestCategory = async () => {
   try {
     const response = await request.post('/api/categories').send({
       name: categoryName,
-      visibility: "Show"
+      visibility: "Show",
+      year: 2075
     });
     
     if (!response.body.success) {
@@ -108,13 +111,15 @@ const cleanDatabase = async () => {
         id: 'science-fiction',
         name: 'Science Fiction',
         visibility: 'Show',
-        description: 'Stories set in the future with advanced technology'
+        description: 'Stories set in the future with advanced technology',
+        year: 2150
       },
       {
         id: 'fantasy',
         name: 'Fantasy',
         visibility: 'Show',
-        description: 'Stories with magic and mythical creatures'
+        description: 'Stories with magic and mythical creatures',
+        year: 1250
       }
     ], 
     parameters: [

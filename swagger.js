@@ -63,6 +63,11 @@ const options = {
               description: 'Whether to show or hide this category in the UI',
               enum: ['Show', 'Hide'],
               example: 'Show'
+            },
+            year: {
+              type: 'integer',
+              description: 'Year associated with this category',
+              example: 2050
             }
           },
           required: ['id', 'name', 'visibility']

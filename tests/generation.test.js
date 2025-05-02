@@ -7,30 +7,39 @@ const mockImageData = Buffer.from('test-image-data');
 
 // Mock the AI service to avoid actual API calls
 jest.mock('../services/aiService', () => ({
-  generateContent: jest.fn().mockImplementation(async (parameters, type) => {
+  generateContent: jest.fn().mockImplementation(async (parameters, type, year, providedTitle) => {
+    // Create a response object based on content type
+    let response;
+    
     if (type === 'fiction') {
-      return {
+      response = {
         success: true,
         content: "This is a test story with mocked content.",
+        title: "Mocked Story Title",
+        year: year || 2050,
         metadata: {
           model: "gpt-4o-mini-mock",
           tokens: 100
         }
       };
     } else if (type === 'image') {
-      return {
+      response = {
         success: true,
         imageData: mockImageData,
+        title: "Mocked Image Title",
+        year: year || 2150,
         metadata: {
           model: "dall-e-3-mock",
           prompt: "Test prompt for image generation"
         }
       };
     } else if (type === 'combined') {
-      return {
+      response = {
         success: true,
         content: "This is a test story with mocked content for combined mode.",
         imageData: mockImageData,
+        title: "Mocked Combined Title",
+        year: year || 2100,
         metadata: {
           fiction: {
             model: "gpt-4o-mini-mock",
@@ -42,8 +51,15 @@ jest.mock('../services/aiService', () => ({
           }
         }
       };
+    } else {
+      return { success: false, error: "Unsupported content type" };
     }
-    return { success: false, error: "Unsupported content type" };
+    
+    // Important: Set title to null so that the controller will use the user-provided title
+    // This is necessary because the controller uses: title: result.title || title || "Untitled Story"
+    response.title = null;
+    
+    return response;
   })
 }));
 
@@ -71,13 +87,14 @@ describe('Generation API Tests', () => {
     }
   });
 
-  test('POST /api/generate - Should generate content with dropdown parameter', async () => {
+  test('POST /api/generate - Should generate content with year parameter', async () => {
     const requestPayload = {
       parameterValues: {
         [category.id]: {
           [parameters.dropdown.id]: parameters.dropdown.values[0].label
         }
-      }
+      },
+      year: 2075
     };
       
     const response = await request.post('/api/generate').send(requestPayload);
@@ -85,25 +102,48 @@ describe('Generation API Tests', () => {
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('success', true);
     expect(response.body).toHaveProperty('content');
+    expect(response.body).toHaveProperty('year', 2075);
+    expect(response.body).toHaveProperty('title');
     expect(response.body).toHaveProperty('metadata');
   });
 
-  test('POST /api/generate - Should generate content with slider parameter', async () => {
+  // We're mocking the generateController.js to avoid the call to AI service
+  // This means we need to mock the entire behavior of the controller
+  test('POST /api/generate - Should generate content with title parameter', async () => {
+    // Override the mock for this specific test to return the provided title
+    const originalMock = require('../services/aiService').generateContent;
+    require('../services/aiService').generateContent.mockImplementationOnce(
+      async (parameters, type) => ({
+        success: true,
+        content: "This is a test story with mocked content.",
+        title: null, // This null value will make the controller use the provided title
+        metadata: {
+          model: "gpt-4o-mini-mock",
+          tokens: 100
+        }
+      })
+    );
+    
     const requestPayload = {
       parameterValues: {
         [category.id]: {
           [parameters.slider.id]: 50
         }
-      }
+      },
+      title: "Custom Test Title"
     };
     const response = await request.post('/api/generate').send(requestPayload);
     
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('success', true);
     expect(response.body).toHaveProperty('content');
+    expect(response.body).toHaveProperty('title', "Custom Test Title");
+    
+    // Restore the original mock for other tests
+    require('../services/aiService').generateContent = originalMock;
   });
   
-  test('POST /api/generate - Should generate content with toggle parameter', async () => {
+  test('POST /api/generate - Should generate content with toggle parameter and use default title', async () => {
     const requestPayload = {
       parameterValues: {
         [category.id]: {
@@ -116,6 +156,8 @@ describe('Generation API Tests', () => {
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('success', true);
     expect(response.body).toHaveProperty('content');
+    expect(response.body).toHaveProperty('title'); // Should have a default title
+    expect(response.body.title).toBeTruthy(); // Title should not be empty
   });
 
   test('POST /api/generate - Should generate content with multiple parameters', async () => {
@@ -227,14 +269,31 @@ describe('Generation API Tests', () => {
     expect(response.body).toHaveProperty('success', true);
   });
 
-  test('POST /api/generate - Should generate fiction content when explicitly requested', async () => {
+  test('POST /api/generate - Should generate fiction content with both year and title', async () => {
+    // Override the mock for this specific test
+    const originalMock = require('../services/aiService').generateContent;
+    require('../services/aiService').generateContent.mockImplementationOnce(
+      async (parameters, type, year) => ({
+        success: true,
+        content: "This is a test story with mocked content.",
+        title: null, // Null allows controller to use provided title
+        year: year,
+        metadata: {
+          model: "gpt-4o-mini-mock",
+          tokens: 100
+        }
+      })
+    );
+    
     const requestPayload = {
       parameterValues: {
         [category.id]: {
           [parameters.dropdown.id]: parameters.dropdown.values[0].label
         }
       },
-      contentType: 'fiction'
+      contentType: 'fiction',
+      year: 2095,
+      title: "My Custom Fiction Story"
     };
       
     const response = await request.post('/api/generate').send(requestPayload);
@@ -243,17 +302,39 @@ describe('Generation API Tests', () => {
     expect(response.body).toHaveProperty('success', true);
     expect(response.body).toHaveProperty('content');
     expect(response.body).toHaveProperty('metadata');
+    expect(response.body).toHaveProperty('year', 2095);
+    expect(response.body).toHaveProperty('title', "My Custom Fiction Story");
     expect(response.body).not.toHaveProperty('imageData');
+    
+    // Restore the original mock
+    require('../services/aiService').generateContent = originalMock;
   });
 
-  test('POST /api/generate - Should generate image content when requested', async () => {
+  test('POST /api/generate - Should generate image content with title and year', async () => {
+    // Override the mock for this specific test
+    const originalMock = require('../services/aiService').generateContent;
+    require('../services/aiService').generateContent.mockImplementationOnce(
+      async (parameters, type, year) => ({
+        success: true,
+        imageData: mockImageData,
+        title: null, // Null allows controller to use provided title
+        year: year,
+        metadata: {
+          model: "dall-e-3-mock",
+          prompt: "Test prompt for image generation"
+        }
+      })
+    );
+    
     const requestPayload = {
       parameterValues: {
         [category.id]: {
           [parameters.dropdown.id]: parameters.dropdown.values[0].label
         }
       },
-      contentType: 'image'
+      contentType: 'image',
+      year: 2120,
+      title: "My Custom Test Image"
     };
       
     const response = await request.post('/api/generate').send(requestPayload);
@@ -262,8 +343,13 @@ describe('Generation API Tests', () => {
     expect(response.body).toHaveProperty('success', true);
     expect(response.body).toHaveProperty('imageData');
     expect(response.body).toHaveProperty('metadata');
+    expect(response.body).toHaveProperty('year', 2120);
+    expect(response.body).toHaveProperty('title', "My Custom Test Image");
     expect(response.body).not.toHaveProperty('content');
     expect(response.body.metadata).toHaveProperty('prompt');
+    
+    // Restore the original mock
+    require('../services/aiService').generateContent = originalMock;
   });
 
   test('POST /api/generate - Should reject invalid content type', async () => {
@@ -287,7 +373,29 @@ describe('Generation API Tests', () => {
     expect(response.body.error).toContain('combined');
   });
 
-  test('POST /api/generate - Should generate combined content when requested', async () => {
+  test('POST /api/generate - Should generate combined content with title and year', async () => {
+    // Override the mock for this specific test
+    const originalMock = require('../services/aiService').generateContent;
+    require('../services/aiService').generateContent.mockImplementationOnce(
+      async (parameters, type, year) => ({
+        success: true,
+        content: "This is a test story with mocked content for combined mode.",
+        imageData: mockImageData,
+        title: null, // Null allows controller to use provided title
+        year: year,
+        metadata: {
+          fiction: {
+            model: "gpt-4o-mini-mock",
+            tokens: 100
+          },
+          image: {
+            model: "dall-e-3-mock",
+            prompt: "Test prompt for image generation"
+          }
+        }
+      })
+    );
+    
     const requestPayload = {
       parameterValues: {
         [category.id]: {
@@ -295,7 +403,9 @@ describe('Generation API Tests', () => {
           [parameters.slider.id]: 50
         }
       },
-      contentType: 'combined'
+      contentType: 'combined',
+      year: 2200,
+      title: "My Combined Story and Image"
     };
       
     const response = await request.post('/api/generate').send(requestPayload);
@@ -305,6 +415,8 @@ describe('Generation API Tests', () => {
     expect(response.body).toHaveProperty('content');
     expect(response.body).toHaveProperty('imageData');
     expect(response.body).toHaveProperty('metadata');
+    expect(response.body).toHaveProperty('year', 2200);
+    expect(response.body).toHaveProperty('title', "My Combined Story and Image");
     
     // Check for nested metadata structure specific to combined mode
     expect(response.body.metadata).toHaveProperty('fiction');
@@ -317,5 +429,8 @@ describe('Generation API Tests', () => {
     // Check that both content and image are present
     expect(response.body.content).toBeTruthy();
     expect(response.body.imageData).toBeTruthy();
+    
+    // Restore the original mock
+    require('../services/aiService').generateContent = originalMock;
   });
 });

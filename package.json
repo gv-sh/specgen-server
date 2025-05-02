@@ -7,6 +7,8 @@
     "start": "node index.js",
     "dev": "NODE_ENV=development nodemon index.js",
     "test": "jest --runInBand --config jest.config.js --colors=true --detectOpenHandles",
+    "recreate-db": "node scripts/recreateDatabase.js",
+    "fix-and-test": "node scripts/fixAndTest.js",
     "init-db": "node scripts/initTestData.js",
     "lint": "eslint .",
     "generate-api-spec": "node scripts/generate-api-spec.js"

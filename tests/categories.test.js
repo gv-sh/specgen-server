@@ -1,3 +1,4 @@
+// tests/categories.test.js
 /* global describe, test, expect, beforeAll */
 const { request, cleanDatabase, initDatabase } = require('./setup');
 
@@ -22,8 +23,9 @@ describe('Category API Tests', () => {
 
   test('POST /api/categories - Should create a new category', async () => {
     const newCategory = {
-      name: 'Alternate History', // Changed from 'Science Fiction' to avoid conflict
-      visibility: 'Show'
+      name: 'Alternate History',
+      visibility: 'Show',
+      year: 1985 // New field
     };
 
     const response = await request.post('/api/categories').send(newCategory);
@@ -33,6 +35,7 @@ describe('Category API Tests', () => {
     expect(response.body.data).toHaveProperty('id');
     expect(response.body.data).toHaveProperty('name', newCategory.name);
     expect(response.body.data).toHaveProperty('visibility', newCategory.visibility);
+    expect(response.body.data).toHaveProperty('year', newCategory.year); // Test new field
     
     // Save category ID for later tests
     categoryId = response.body.data.id;
@@ -50,7 +53,8 @@ describe('Category API Tests', () => {
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('success', true);
     expect(response.body.data).toHaveProperty('id', categoryId);
-    expect(response.body.data).toHaveProperty('name', 'Alternate History'); // Updated to match new category name
+    expect(response.body.data).toHaveProperty('name', 'Alternate History');
+    expect(response.body.data).toHaveProperty('year', 1985); // Test new field
   });
 
   test('PUT /api/categories/:id - Should update a category', async () => {
@@ -61,9 +65,10 @@ describe('Category API Tests', () => {
     }
     
     const updatedCategory = {
-      name: 'Updated Alternate History', // Updated to match new category name
+      name: 'Updated Alternate History',
       visibility: 'Show',
-      description: 'Updated description for alternate history category'
+      description: 'Updated description for alternate history category',
+      year: 1990 // Updated year
     };
 
     const response = await request.put(`/api/categories/${categoryId}`).send(updatedCategory);
@@ -72,12 +77,14 @@ describe('Category API Tests', () => {
     expect(response.body).toHaveProperty('success', true);
     expect(response.body.data).toHaveProperty('id', categoryId);
     expect(response.body.data).toHaveProperty('name', updatedCategory.name);
+    expect(response.body.data).toHaveProperty('year', updatedCategory.year); // Test updated field
   });
 
   test('POST /api/categories - Should validate required fields', async () => {
     const invalidCategory = {
       // Missing 'name' field
-      visibility: 'Show'
+      visibility: 'Show',
+      year: 2000 // Adding year field
     };
 
     const response = await request.post('/api/categories').send(invalidCategory);
@@ -92,7 +99,8 @@ describe('Category API Tests', () => {
     const newCategory = {
       name: 'Category To Delete',
       visibility: 'Show',
-      description: 'A category that will be deleted'
+      description: 'A category that will be deleted',
+      year: 2022 // Adding year field
     };
 
     const createResponse = await request.post('/api/categories').send(newCategory);
@@ -111,6 +119,7 @@ describe('Category API Tests', () => {
     expect(response.body).toHaveProperty('success', true);
     expect(response.body.data).toHaveProperty('deletedCategory');
     expect(response.body.data.deletedCategory).toHaveProperty('id', deleteId);
+    expect(response.body.data.deletedCategory).toHaveProperty('year', 2022); // Verify year field
     
     // Verify it's gone
     const verifyResponse = await request.get(`/api/categories/${deleteId}`);

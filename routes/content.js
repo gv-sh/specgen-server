@@ -38,6 +38,10 @@ const contentController = require('../controllers/contentController');
  *           type: string
  *           description: URL of the generated image (only for image type)
  *           example: "https://example.com/generated-image.jpg"
+ *         year:
+ *           type: integer
+ *           description: Year in which the story is set
+ *           example: 2085
  *         parameterValues:
  *           type: object
  *           description: Parameters used to generate this content
@@ -123,7 +127,7 @@ const contentController = require('../controllers/contentController');
  * /api/content:
  *   get:
  *     summary: Get all generated content
- *     description: Retrieve a list of all generated content, with optional filtering by type
+ *     description: Retrieve a list of all generated content, with optional filtering by type or year
  *     tags: [Content]
  *     parameters:
  *       - in: query
@@ -132,6 +136,11 @@ const contentController = require('../controllers/contentController');
  *           type: string
  *           enum: [fiction, image]
  *         description: Filter content by type
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *         description: Filter content by story year
  *     responses:
  *       200:
  *         description: List of generated content
@@ -143,6 +152,60 @@ const contentController = require('../controllers/contentController');
  *         $ref: '#/components/responses/Error'
  */
 router.get('/', contentController.getAllContent);
+
+/**
+ * @swagger
+ * /api/content/years:
+ *   get:
+ *     summary: Get all years with content
+ *     description: Retrieve a list of all years that have generated content
+ *     tags: [Content]
+ *     responses:
+ *       200:
+ *         description: List of years with content
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: integer
+ *                   example: [2050, 2085, 2100, 2150]
+ *       500:
+ *         $ref: '#/components/responses/Error'
+ */
+router.get('/years', contentController.getAvailableYears);
+
+/**
+ * @swagger
+ * /api/content/year/{year}:
+ *   get:
+ *     summary: Get content by year
+ *     description: Retrieve all content set in a specific year
+ *     tags: [Content]
+ *     parameters:
+ *       - in: path
+ *         name: year
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Year to filter by
+ *     responses:
+ *       200:
+ *         description: List of content for the specified year
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ContentListResponse'
+ *       500:
+ *         $ref: '#/components/responses/Error'
+ */
+router.get('/year/:year', contentController.getContentByYear);
 
 /**
  * @swagger
@@ -181,7 +244,7 @@ router.get('/:id', contentController.getContentById);
  * /api/content/{id}:
  *   put:
  *     summary: Update generated content
- *     description: Update a generated content's title, content or imageUrl
+ *     description: Update a generated content's title, content, imageUrl, or year
  *     tags: [Content]
  *     parameters:
  *       - in: path
@@ -208,6 +271,10 @@ router.get('/:id', contentController.getContentById);
  *                 type: string
  *                 description: New image URL (for image type only)
  *                 example: "https://example.com/new-image.jpg"
+ *               year:
+ *                 type: integer
+ *                 description: New year for the story setting
+ *                 example: 2095
  *     responses:
  *       200:
  *         description: Updated content

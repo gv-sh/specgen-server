@@ -1,3 +1,4 @@
+// services/databaseService.js
 /* global process */
 const fs = require('fs').promises;
 const path = require('path');
@@ -348,6 +349,23 @@ class DatabaseService {
    */
   async getContentById(id) {
     return sqliteService.getContentById(id);
+  }
+
+  /**
+   * Get content by specific year
+   * @param {Number} year - Year to filter by
+   * @returns {Promise<Array>} - Content items for the specified year
+   */
+  async getContentByYear(year) {
+    return sqliteService.getContentByYear(year);
+  }
+
+  /**
+   * Get list of available years in content
+   * @returns {Promise<Array>} - List of years with content
+   */
+  async getAvailableYears() {
+    return sqliteService.getAvailableYears();
   }
 
   /**

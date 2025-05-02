@@ -36,6 +36,14 @@ const generateController = require('../controllers/generateController');
  *           description: Type of content to generate ('fiction', 'image', or 'combined')
  *           enum: [fiction, image, combined]
  *           default: fiction
+ *         year:
+ *           type: integer
+ *           description: Year in which the story is set (e.g., 2050, 2100)
+ *           example: 2085
+ *         title:
+ *           type: string
+ *           description: Optional title to use for the story (if not provided, one will be generated)
+ *           example: "The Last Frontier"
  *       required:
  *         - parameterValues
  *     
@@ -54,6 +62,14 @@ const generateController = require('../controllers/generateController');
  *           type: string
  *           description: Base64-encoded image data (only provided for image or combined type)
  *           example: "iVBORw0KGgoAAAANSUhEUgAA..."
+ *         title:
+ *           type: string
+ *           description: Title of the generated story (either provided or extracted from content)
+ *           example: "The Last Frontier"
+ *         year:
+ *           type: integer
+ *           description: Year in which the story is set
+ *           example: 2085
  *         metadata:
  *           type: object
  *           properties:
@@ -134,6 +150,14 @@ const generateController = require('../controllers/generateController');
  *                 enum: [fiction, image, combined]
  *                 default: fiction
  *                 description: Type of content to generate ('fiction', 'image', or 'combined')
+ *               year:
+ *                 type: integer
+ *                 description: Optional year in which to set the story
+ *                 example: 2085
+ *               title:
+ *                 type: string
+ *                 description: Optional title to use for the story (if not provided, one will be generated)
+ *                 example: "The Last Frontier"
  *           examples:
  *             fictionGeneration:
  *               summary: Fiction generation request
@@ -144,6 +168,7 @@ const generateController = require('../controllers/generateController');
  *                     "science-fiction-alien-life": true
  *                     "science-fiction-space-exploration-focus": 7
  *                 contentType: "fiction"
+ *                 year: 2085
  *             imageGeneration:
  *               summary: Image generation request
  *               value:
@@ -152,6 +177,7 @@ const generateController = require('../controllers/generateController');
  *                     "fantasy-magic-system": "Elemental"
  *                     "fantasy-mythical-creatures": ["Dragons", "Elves"]
  *                 contentType: "image"
+ *                 year: 2150
  *             combinedGeneration:
  *               summary: Combined fiction and image generation request
  *               value:
@@ -160,6 +186,8 @@ const generateController = require('../controllers/generateController');
  *                     "fantasy-magic-system": "Elemental"
  *                     "fantasy-mythical-creatures": ["Dragons", "Elves"]
  *                 contentType: "combined"
+ *                 year: 2100
+ *                 title: "The Crystal Caves of Eldoria"
  *     responses:
  *       200:
  *         description: Content generated successfully

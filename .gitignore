@@ -17,6 +17,7 @@ build/
 coverage/
 uploads/
 data/*.db
+data/generated-content.db
 data/*.json
 
 # IDE and editor files
