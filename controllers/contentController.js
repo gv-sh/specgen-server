@@ -14,16 +14,20 @@ const contentController = {
    */
   async getAllContent(req, res, next) {
     try {
-      // Extract filter parameters from query
       const { type, year } = req.query;
-
-      // Apply filters if provided
       const filters = {};
       if (type) filters.type = type;
       if (year) filters.year = parseInt(year);
-
+  
       const content = await databaseService.getGeneratedContent(filters);
-
+      
+      // Convert imageData to base64 for both image and combined types
+      content.forEach(item => {
+        if ((item.type === 'image' || item.type === 'combined') && item.imageData) {
+          item.imageData = item.imageData.toString('base64');
+        }
+      });
+  
       res.status(200).json({
         success: true,
         data: content
@@ -43,18 +47,19 @@ const contentController = {
     try {
       const { id } = req.params;
       const content = await databaseService.getContentById(id);
-
+  
       if (!content) {
         return res.status(404).json({
           success: false,
           error: `Content with ID ${id} not found`
         });
       }
-
-      if (content.type === 'image' && content.imageData) {
+  
+      // Convert imageData to base64 for both image and combined types
+      if ((content.type === 'image' || content.type === 'combined') && content.imageData) {
         content.imageData = content.imageData.toString('base64');
       }
-
+  
       res.status(200).json({
         success: true,
         data: content
@@ -84,9 +89,9 @@ const contentController = {
       
       const content = await databaseService.getContentByYear(yearInt);
       
-      // Convert imageData to base64 for image content
+      // Convert imageData to base64 for both image and combined types
       content.forEach(item => {
-        if (item.type === 'image' && item.imageData) {
+        if ((item.type === 'image' || item.type === 'combined') && item.imageData) {
           item.imageData = item.imageData.toString('base64');
         }
       });
