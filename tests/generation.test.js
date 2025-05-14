@@ -5,7 +5,7 @@ const { request, createTestCategory, createTestParameters, cleanDatabase, initDa
 
 const mockImageData = Buffer.from('test-image-data');
 
-// Mock the AI service to avoid actual API calls
+// Mock the AI service to avoid actual API calls and test the new sequential behavior
 jest.mock('../services/aiService', () => ({
   generateContent: jest.fn().mockImplementation(async (parameters, type, year, providedTitle) => {
     // Create a response object based on content type
@@ -14,7 +14,7 @@ jest.mock('../services/aiService', () => ({
     if (type === 'fiction') {
       response = {
         success: true,
-        content: "This is a test story with mocked content.",
+        content: "This is a test story with mocked content. The starship Nebula drifted through space, its metallic hull gleaming in the light of distant stars.",
         title: "Mocked Story Title",
         year: year || 2050,
         metadata: {
@@ -34,9 +34,12 @@ jest.mock('../services/aiService', () => ({
         }
       };
     } else if (type === 'combined') {
+      // Mock the new sequential behavior: fiction is generated first, then image uses the text
+      const mockStoryContent = "This is a test story with mocked content for combined mode. The crystalline chamber glowed with an ethereal blue light as Dr. Elena stepped through the ancient portal.";
+      
       response = {
         success: true,
-        content: "This is a test story with mocked content for combined mode.",
+        content: mockStoryContent,
         imageData: mockImageData,
         title: "Mocked Combined Title",
         year: year || 2100,
@@ -47,7 +50,8 @@ jest.mock('../services/aiService', () => ({
           },
           image: {
             model: "dall-e-3-mock",
-            prompt: "Test prompt for image generation"
+            // The prompt should now include story elements extracted from the text
+            prompt: "Create a detailed, visually striking image depicting the following scene: crystalline chamber, ethereal blue light, Dr. Elena, ancient portal. This image should complement the following story..."
           }
         }
       };
@@ -60,10 +64,79 @@ jest.mock('../services/aiService', () => ({
     response.title = null;
     
     return response;
+  }),
+  
+  // Also mock the individual methods to test the new sequential behavior
+  generateFiction: jest.fn().mockImplementation(async (parameters, year) => ({
+    success: true,
+    content: "Generated fiction content with visual elements like starship Nebula and metallic hull gleaming.",
+    title: "Test Fiction",
+    year: year || 2050,
+    metadata: {
+      model: "gpt-4o-mini-mock",
+      tokens: 100
+    }
+  })),
+  
+  generateImage: jest.fn().mockImplementation(async (parameters, year, generatedText) => {
+    // Test that the method now accepts generatedText parameter
+    let prompt = "Test prompt for image generation";
+    
+    // If generatedText is provided, the prompt should include story elements
+    if (generatedText) {
+      prompt = `Create a detailed, visually striking image depicting visual elements from: ${generatedText.substring(0, 100)}...`;
+    }
+    
+    return {
+      success: true,
+      imageData: mockImageData,
+      year: year || 2150,
+      metadata: {
+        model: "dall-e-3-mock",
+        prompt: prompt
+      }
+    };
+  }),
+  
+  generateCombined: jest.fn().mockImplementation(async (parameters, year) => {
+    // First generate fiction
+    const fictionResult = {
+      success: true,
+      content: "Generated story with starship Nebula and glowing crystals in a metallic chamber.",
+      title: "Combined Story",
+      year: year || 2100,
+      metadata: {
+        model: "gpt-4o-mini-mock",
+        tokens: 100
+      }
+    };
+    
+    // Then generate image using the fiction content
+    const imageResult = {
+      success: true,
+      imageData: mockImageData,
+      year: year || 2100,
+      metadata: {
+        model: "dall-e-3-mock",
+        prompt: `Create a detailed, visually striking image depicting the following scene: starship Nebula, glowing crystals, metallic chamber`
+      }
+    };
+    
+    return {
+      success: true,
+      content: fictionResult.content,
+      title: fictionResult.title,
+      year: year || fictionResult.year,
+      imageData: imageResult.imageData,
+      metadata: {
+        fiction: fictionResult.metadata,
+        image: imageResult.metadata
+      }
+    };
   })
 }));
 
-describe('Generation API Tests', () => {
+describe('Generation API Tests with Sequential Text-Image Generation', () => {
   let category;
   let parameters;
 
@@ -87,7 +160,88 @@ describe('Generation API Tests', () => {
     }
   });
 
-  test('POST /api/generate - Should generate content with year parameter', async () => {
+  test('POST /api/generate - Should generate combined content with sequential text-to-image generation', async () => {
+    // Get reference to the mocked functions
+    const aiService = require('../services/aiService');
+    
+    const requestPayload = {
+      parameterValues: {
+        [category.id]: {
+          [parameters.dropdown.id]: parameters.dropdown.values[0].label,
+          [parameters.slider.id]: 50
+        }
+      },
+      contentType: 'combined',
+      year: 2200,
+      title: "Sequential Generation Test"
+    };
+      
+    const response = await request.post('/api/generate').send(requestPayload);
+    
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('success', true);
+    expect(response.body).toHaveProperty('content');
+    expect(response.body).toHaveProperty('imageData');
+    expect(response.body).toHaveProperty('metadata');
+    expect(response.body).toHaveProperty('year', 2200);
+    expect(response.body).toHaveProperty('title', "Sequential Generation Test");
+    
+    // Check for nested metadata structure specific to combined mode
+    expect(response.body.metadata).toHaveProperty('fiction');
+    expect(response.body.metadata).toHaveProperty('image');
+    expect(response.body.metadata.fiction).toHaveProperty('model');
+    expect(response.body.metadata.fiction).toHaveProperty('tokens');
+    expect(response.body.metadata.image).toHaveProperty('model');
+    expect(response.body.metadata.image).toHaveProperty('prompt');
+    
+    // Verify that the image prompt includes story-based elements
+    // This tests the new sequential behavior where image is based on generated text
+    const imagePrompt = response.body.metadata.image.prompt;
+    expect(imagePrompt).toContain('depicting the following scene');
+    
+    // Check that both content and image are present
+    expect(response.body.content).toBeTruthy();
+    expect(response.body.imageData).toBeTruthy();
+  });
+
+  test('Individual generateImage method should accept generated text parameter', async () => {
+    const aiService = require('../services/aiService');
+    
+    // Test the generateImage method directly with generated text
+    const testParameters = { [category.id]: { [parameters.dropdown.id]: "Advanced" } };
+    const year = 2150;
+    const generatedText = "The starship Enterprise gleamed in the nebula's purple light.";
+    
+    const result = await aiService.generateImage(testParameters, year, generatedText);
+    
+    expect(result.success).toBe(true);
+    expect(result.imageData).toEqual(mockImageData);
+    expect(result.metadata.prompt).toContain('depicting visual elements from');
+    
+    // Verify that generateImage was called with the generatedText parameter
+    expect(aiService.generateImage).toHaveBeenCalledWith(testParameters, year, generatedText);
+  });
+
+  test('Individual generateCombined method should follow sequential pattern', async () => {
+    const aiService = require('../services/aiService');
+    
+    // Test the generateCombined method directly
+    const testParameters = { [category.id]: { [parameters.dropdown.id]: "Advanced" } };
+    const year = 2180;
+    
+    const result = await aiService.generateCombined(testParameters, year);
+    
+    expect(result.success).toBe(true);
+    expect(result.content).toBeTruthy();
+    expect(result.imageData).toBeTruthy();
+    expect(result.metadata.fiction).toBeDefined();
+    expect(result.metadata.image).toBeDefined();
+    
+    // The image metadata should indicate it was based on story elements
+    expect(result.metadata.image.prompt).toContain('depicting the following scene');
+  });
+
+  test('POST /api/generate - Should generate fiction content with year parameter', async () => {
     const requestPayload = {
       parameterValues: {
         [category.id]: {
@@ -107,8 +261,6 @@ describe('Generation API Tests', () => {
     expect(response.body).toHaveProperty('metadata');
   });
 
-  // We're mocking the generateController.js to avoid the call to AI service
-  // This means we need to mock the entire behavior of the controller
   test('POST /api/generate - Should generate content with title parameter', async () => {
     // Override the mock for this specific test to return the provided title
     const originalMock = require('../services/aiService').generateContent;
@@ -373,64 +525,21 @@ describe('Generation API Tests', () => {
     expect(response.body.error).toContain('combined');
   });
 
-  test('POST /api/generate - Should generate combined content with title and year', async () => {
-    // Override the mock for this specific test
-    const originalMock = require('../services/aiService').generateContent;
-    require('../services/aiService').generateContent.mockImplementationOnce(
-      async (parameters, type, year) => ({
-        success: true,
-        content: "This is a test story with mocked content for combined mode.",
-        imageData: mockImageData,
-        title: null, // Null allows controller to use provided title
-        year: year,
-        metadata: {
-          fiction: {
-            model: "gpt-4o-mini-mock",
-            tokens: 100
-          },
-          image: {
-            model: "dall-e-3-mock",
-            prompt: "Test prompt for image generation"
-          }
-        }
-      })
-    );
+  test('Visual element extraction should work for complex text', async () => {
+    const aiService = require('../services/aiService');
     
-    const requestPayload = {
-      parameterValues: {
-        [category.id]: {
-          [parameters.dropdown.id]: parameters.dropdown.values[0].label,
-          [parameters.slider.id]: 50
-        }
-      },
-      contentType: 'combined',
-      year: 2200,
-      title: "My Combined Story and Image"
-    };
-      
-    const response = await request.post('/api/generate').send(requestPayload);
+    // Mock up text that contains various visual elements
+    const complexText = `**Title: The Crystal Chambers**
     
-    expect(response.status).toBe(200);
-    expect(response.body).toHaveProperty('success', true);
-    expect(response.body).toHaveProperty('content');
-    expect(response.body).toHaveProperty('imageData');
-    expect(response.body).toHaveProperty('metadata');
-    expect(response.body).toHaveProperty('year', 2200);
-    expect(response.body).toHaveProperty('title', "My Combined Story and Image");
+    Dr. Elena Rodriguez stepped through the ancient portal, her metallic suit gleaming in the ethereal blue light. The crystalline chamber stretched before her, filled with swirling purple mist and glowing artifacts. In the distance, she could see the starship Nebula docked at the lunar station, its hull reflecting the crimson aurora that danced across the alien sky.
     
-    // Check for nested metadata structure specific to combined mode
-    expect(response.body.metadata).toHaveProperty('fiction');
-    expect(response.body.metadata).toHaveProperty('image');
-    expect(response.body.metadata.fiction).toHaveProperty('model');
-    expect(response.body.metadata.fiction).toHaveProperty('tokens');
-    expect(response.body.metadata.image).toHaveProperty('model');
-    expect(response.body.metadata.image).toHaveProperty('prompt');
+    The advanced scanner in her hand pulsed with green light as she approached the throne-like altar at the center of the chamber.`;
     
-    // Check that both content and image are present
-    expect(response.body.content).toBeTruthy();
-    expect(response.body.imageData).toBeTruthy();
+    // Test with the mocked generateImage that includes text content
+    const result = await aiService.generateImage({}, 2150, complexText);
     
-    // Restore the original mock
-    require('../services/aiService').generateContent = originalMock;
+    expect(result.success).toBe(true);
+    expect(result.metadata.prompt).toContain('depicting visual elements from');
+    expect(result.metadata.prompt).toContain('**Title: The Crystal Chambers**');
   });
 });

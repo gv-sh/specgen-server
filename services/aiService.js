@@ -129,20 +129,21 @@ class AIService {
   }
 
   /**
-   * Generate image based on provided parameters
+   * Generate image based on provided parameters and optional generated text
    * @param {Object} parameters - User-selected parameters for image generation
    * @param {Number} year - Optional year to include in the image concept
+   * @param {String} generatedText - Optional generated text to use for creating a more coherent image
    * @returns {Promise<Object>} - Generated image URL from OpenAI
    */
-  async generateImage(parameters, year = null) {
+  async generateImage(parameters, year = null, generatedText = null) {
     try {
       // Get model settings
       const model = await settingsService.getSetting('ai.models.image', 'dall-e-3');
       const size = await settingsService.getSetting('ai.parameters.image.size', '1024x1024');
       const quality = await settingsService.getSetting('ai.parameters.image.quality', 'standard');
       
-      // Format parameters into a prompt for image generation, including year if provided
-      const prompt = this.formatImagePrompt(parameters, year);
+      // Format parameters into a prompt for image generation, including year and generated text if provided
+      const prompt = this.formatImagePrompt(parameters, year, generatedText);
       
       // Call OpenAI API for image generation
       const response = await axios.post(
@@ -238,10 +239,30 @@ class AIService {
    * Format user parameters into a prompt for DALL-E image generation
    * @param {Object} parameters - User-selected parameters
    * @param {Number} year - Optional year to include in the image concept
+   * @param {String} generatedText - Optional generated text to use for creating a more coherent image
    * @returns {String} - Formatted prompt
    */
-  formatImagePrompt(parameters, year = null) {
-    let prompt = "Create a detailed, visually striking image with the following elements:\n\n";
+  formatImagePrompt(parameters, year = null, generatedText = null) {
+    let prompt = "Create a detailed, visually striking image";
+    
+    // If we have generated text, use it to create a more coherent image
+    if (generatedText) {
+      // Extract key visual elements from the generated text
+      const visualElements = this.extractVisualElementsFromText(generatedText);
+      
+      if (visualElements.length > 0) {
+        prompt += ` depicting the following scene: ${visualElements.join(', ')}`;
+      }
+      
+      // Add context from the generated text
+      prompt += "\n\nThis image should complement the following story:\n";
+      // Use the first 500 characters of the story for context
+      const storyExcerpt = generatedText.substring(0, 500) + (generatedText.length > 500 ? '...' : '');
+      prompt += `"${storyExcerpt}"\n\n`;
+    } else {
+      // Fallback to parameter-based prompt when no text is provided
+      prompt += " with the following elements:\n\n";
+    }
     
     // If year is provided, add it to the prompt
     if (year) {
@@ -275,14 +296,142 @@ class AIService {
       prompt += '.\n';
     });
     
-    // Add additional instructions for high-quality images
-    prompt += "\nUse high-quality, photorealistic rendering with attention to lighting, detail, and composition. The image should be visually cohesive and striking.";
+    // Get prompt suffix from settings
+    const defaultSuffix = "Use high-quality, photorealistic rendering with attention to lighting, detail, and composition. The image should be visually cohesive and striking.";
+    prompt += `\n${defaultSuffix}`;
     
     return prompt;
   }
 
   /**
+   * Extract visual elements from generated text to create a more coherent image
+   * @param {String} text - Generated story text
+   * @returns {Array<String>} - Array of visual elements
+   */
+  extractVisualElementsFromText(text) {
+    if (!text) return [];
+    
+    const visualElements = [];
+    
+    // Remove the title if present
+    const cleanText = text.replace(/\*\*Title:.*?\*\*/, '').trim();
+    
+    // Extract characters - improved patterns with better action words
+    const characterPatterns = [
+      /(Dr\.|Professor|Captain|Agent|Detective)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/gi,
+      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(stood|walked|ran|sat|looked|gazed|stared|stepped)/gi
+    ];
+    
+    for (const pattern of characterPatterns) {
+      const matches = cleanText.match(pattern);
+      if (matches) {
+        matches.slice(0, 3).forEach(match => {
+          // Clean up the match to get just the name
+          let cleaned = match.replace(/\s+(stood|walked|ran|sat|looked|gazed|stared|stepped).*$/i, '').trim();
+          // For patterns with titles, keep the full title + name
+          if (cleaned.match(/^(Dr\.|Professor|Captain|Agent|Detective)/)) {
+            visualElements.push(cleaned);
+          } else {
+            // For action-based patterns, extract just the name before the action
+            const nameMatch = match.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
+            if (nameMatch) {
+              visualElements.push(nameMatch[1]);
+            }
+          }
+        });
+      }
+    }
+    
+    // Extract locations and settings
+    const locationPatterns = [
+      /(in|at|on|through)\s+(the\s+)?([A-Z][a-z\s]{3,30}(?:city|planet|station|facility|dome|colony|ship|chamber|laboratory|castle|forest|mountain|desert|ocean|space))/gi,
+      /(starship|spaceship|vessel|craft|vehicle)\s+([A-Z][a-z]+)/gi,
+      /(colony|city|station|outpost|facility)\s+([A-Z][a-z\s]+)/gi
+    ];
+    
+    for (const pattern of locationPatterns) {
+      const matches = cleanText.match(pattern);
+      if (matches) {
+        matches.slice(0, 2).forEach(match => {
+          const location = match.replace(/^(in|at|on|through)\s+(the\s+)?/i, '').trim();
+          if (location.length > 3 && location.length < 50) {
+            visualElements.push(location);
+          }
+        });
+      }
+    }
+    
+    // Extract objects and technology
+    // Pattern 1: adjective + noun combinations  
+    let matches = cleanText.match(/(advanced|alien|ancient|glowing|metallic|crystalline)\s+(scanner|device|weapon|tool|helmet|suit|console|terminal|reactor|portal|gateway|chamber|throne|altar|artifact)/gi);
+    if (matches) {
+      matches.forEach(match => {
+        visualElements.push(match.trim());
+      });
+    }
+    
+    // Pattern 2: standalone tech objects
+    matches = cleanText.match(/\b(scanner|device|weapon|tool|helmet|suit|console|terminal|reactor|portal|gateway|chamber|throne|altar|artifact)\b/gi);
+    if (matches) {
+      matches.forEach(match => {
+        visualElements.push(match.trim());
+      });
+    }
+    
+    // Extract atmospheric elements
+    // Pattern 1: action + atmospheric combinations
+    matches = cleanText.match(/(glittering|shimmering|glowing|pulsing|swirling|drifting)\s+(purple\s+mist|mist|fog|clouds|dust|air)/gi);
+    if (matches) {
+      matches.forEach(match => {
+        visualElements.push(match.trim());
+      });
+    }
+    
+    // Pattern 2: color + atmospheric combinations
+    matches = cleanText.match(/(red|blue|green|golden|silver|purple|crimson)\s+(light|glow|aurora|mist|dust|sky)/gi);
+    if (matches) {
+      matches.forEach(match => {
+        visualElements.push(match.trim());
+      });
+    }
+    
+    // Pattern 3: standalone atmospheric elements
+    matches = cleanText.match(/\b(chamber|storm|clouds|mist|fog|aurora|lightning)\b/gi);
+    if (matches) {
+      matches.forEach(match => {
+        visualElements.push(match.trim());
+      });
+    }
+    
+    // Remove duplicates (case-insensitive) and limit to most important elements
+    const uniqueElements = [];
+    const seenElements = new Set();
+    
+    for (const element of visualElements) {
+      const lowerElement = element.toLowerCase();
+      // Additional check to avoid partial matches within longer names
+      let isDuplicate = false;
+      for (const seenElement of seenElements) {
+        if (seenElement === lowerElement || 
+            (lowerElement.includes(seenElement) && seenElement.length > 5) ||
+            (seenElement.includes(lowerElement) && lowerElement.length > 5)) {
+          isDuplicate = true;
+          break;
+        }
+      }
+      
+      if (!isDuplicate) {
+        seenElements.add(lowerElement);
+        uniqueElements.push(element);
+      }
+    }
+    
+    return uniqueElements.slice(0, 5); // Limit to 5 key visual elements
+  }
+
+  /**
    * Generate both fiction and image content based on the same parameters
+   * Now generates image based on the generated fiction text for better coherence
    * @param {Object} parameters - User-selected parameters for generation
    * @param {Number} year - Optional year for story setting
    * @returns {Promise<Object>} - Generated fiction and image content from OpenAI
@@ -296,8 +445,13 @@ class AIService {
         return fictionResult; // Return early if fiction generation failed
       }
       
-      // Then generate the image based on the same parameters and year
-      const imageResult = await this.generateImage(parameters, year || fictionResult.year);
+      // Then generate the image based on the generated text and parameters
+      // This creates a more coherent image that complements the story
+      const imageResult = await this.generateImage(
+        parameters, 
+        year || fictionResult.year, 
+        fictionResult.content // Pass the generated text to create a coherent image
+      );
       
       if (!imageResult.success) {
         return imageResult; // Return early if image generation failed
