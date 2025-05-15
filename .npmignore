@@ -1,0 +1,36 @@
+# Environment files
+.env
+.env.*
+*.log
+
+# Development files
+jest.config.js
+babel.config.js
+
+# Version control
+.git/
+.gitignore
+
+# Deployment
+deploy/
+CLAUDE.md
+
+# Build artifacts
+node_modules/
+uploads/
+logs/
+data/
+
+# IDE and OS files
+.DS_Store
+.vscode/
+.idea/
+
+# NPM files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Lock files (optional - remove if you want to include them)
+package-lock.json
+yarn.lock

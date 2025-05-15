@@ -1,6 +1,6 @@
 {
-  "name": "specgen-server",
-  "version": "1.0.0",
+  "name": "@gv-sh/specgen-server",
+  "version": "0.4.0",
   "description": "SpecGen Server - API for Speculative Fiction Generator",
   "main": "index.js",
   "scripts": {
@@ -16,10 +16,38 @@
   "keywords": [
     "api",
     "generator",
-    "fiction"
+    "fiction",
+    "openai",
+    "speculative-fiction",
+    "ai-generation",
+    "express"
   ],
   "author": "",
   "license": "ISC",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "index.js",
+    "controllers/",
+    "services/",
+    "routes/",
+    "middleware/",
+    "scripts/",
+    "swagger.js",
+    "api-spec.json",
+    "tests/",
+    "docs/",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gv-sh/specgen-server.git"
+  },
+  "homepage": "https://github.com/gv-sh/specgen-server#readme",
+  "bugs": {
+    "url": "https://github.com/gv-sh/specgen-server/issues"
+  },
   "dependencies": {
     "axios": "^1.8.3",
     "cors": "^2.8.5",
