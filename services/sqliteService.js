@@ -25,6 +25,118 @@ class SQLiteService {
     // Create tables if they don't exist
     this.#initializeTables();
   }
+  
+  /**
+   * Get all generated content for backup purposes
+   * @returns {Promise<Array>} - All generated content items
+   */
+  getAllGenerationsForBackup() {
+    return new Promise((resolve, reject) => {
+      this.db.all('SELECT * FROM generated_content ORDER BY created_at DESC', [], (err, rows) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        // Parse and map rows
+        const parsedRows = rows.map(row => this.#mapRowToObject(row));
+        resolve(parsedRows);
+      });
+    });
+  }
+  
+  /**
+   * Restore generations from backup data
+   * @param {Array} generations - Array of generation objects to restore
+   * @returns {Promise<void>}
+   */
+  restoreGenerationsFromBackup(generations) {
+    return new Promise(async (resolve, reject) => {
+      if (!Array.isArray(generations)) {
+        reject(new Error('Invalid generations data: must be an array'));
+        return;
+      }
+      
+      // Begin transaction
+      this.db.serialize(() => {
+        this.db.run('BEGIN TRANSACTION');
+        
+        // Clear existing content
+        this.db.run('DELETE FROM generated_content', (err) => {
+          if (err) {
+            this.db.run('ROLLBACK');
+            reject(err);
+            return;
+          }
+          
+          // Prepare insert statement
+          const stmt = this.db.prepare(`
+            INSERT INTO generated_content 
+            (id, title, type, content, image_data, parameter_values, metadata, year, created_at, updated_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+          
+          let hasError = false;
+          
+          // Insert each generation
+          generations.forEach(generation => {
+            try {
+              // Convert complex objects to JSON strings if they aren't already
+              const parameterValues = typeof generation.parameterValues === 'string' 
+                ? generation.parameterValues 
+                : JSON.stringify(generation.parameterValues || {});
+                
+              const metadata = typeof generation.metadata === 'string' 
+                ? generation.metadata 
+                : JSON.stringify(generation.metadata || {});
+              
+              stmt.run(
+                generation.id,
+                generation.title || `Content ${new Date().toISOString()}`,
+                generation.type || 'unknown',
+                generation.content || null,
+                generation.imageData || null,
+                parameterValues,
+                metadata,
+                generation.year || null,
+                generation.createdAt || new Date().toISOString(),
+                generation.updatedAt || new Date().toISOString(),
+                (err) => {
+                  if (err && !hasError) {
+                    hasError = true;
+                    console.error('Error inserting generation:', err, generation.id);
+                  }
+                }
+              );
+            } catch (error) {
+              hasError = true;
+              console.error('Error processing generation:', error, generation.id);
+            }
+          });
+          
+          // Finalize statement
+          stmt.finalize((err) => {
+            if (err || hasError) {
+              this.db.run('ROLLBACK');
+              reject(err || new Error('Error during restore'));
+              return;
+            }
+            
+            // Commit transaction
+            this.db.run('COMMIT', (err) => {
+              if (err) {
+                this.db.run('ROLLBACK');
+                reject(err);
+                return;
+              }
+              
+              resolve();
+            });
+          });
+        });
+      });
+    });
+  }
 
   /**
    * Ensure database directory exists
@@ -308,6 +420,7 @@ class SQLiteService {
 
   /**
    * Reset the generated content table
+   * @returns {Promise<void>}
    */
   resetGeneratedContent() {
     return new Promise((resolve, reject) => {
