@@ -1,12 +1,14 @@
-name: Publish to NPM
+name: Update Version Badge
 
 on:
   push:
-    tags:
-      - 'v*'  # Triggers on version tags like v0.4.0, v0.4.1, etc.
+    branches:
+      - main  # or your default branch
+    paths:
+      - 'package.json'  # Only run when package.json changes
 
 jobs:
-  publish:
+  update-badge:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -14,17 +16,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          registry-url: 'https://registry.npmjs.org'
-      
+
       - name: Get version from package.json
         id: package-version
         uses: martinbeentjes/npm-get-version-action@v1.3.1
-      
+
       - name: Update README badge
         run: |
           # Replace the version badge in README.md
@@ -35,7 +36,7 @@ jobs:
           
           # Verify the change was made
           grep "version-" README.md
-      
+
       - name: Commit and push if changed
         run: |
           git config --local user.email "action@github.com"
@@ -46,23 +47,8 @@ jobs:
           # Check if there are changes to commit
           if git diff --staged --quiet; then
             echo "No changes to commit"
-          else
-            git commit -m "Update version badge to v${{ steps.package-version.outputs.current-version }}"
-            git push
+            exit 0
           fi
           
-      - name: Install dependencies
-        run: npm install
-        
-      - name: Run tests
-        run: npm test
-        env:
-          NODE_ENV: test
-          
-      - name: Generate API spec
-        run: npm run generate-api-spec
-        
-      - name: Publish to NPM
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          git commit -m "Update version badge to v${{ steps.package-version.outputs.current-version }}"
+          git push
