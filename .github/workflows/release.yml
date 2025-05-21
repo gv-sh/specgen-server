@@ -1,0 +1,81 @@
+name: Release Process
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v0.6.0, v0.6.1, etc.
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+      
+      - name: Extract version from tag
+        id: extract-version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+      - name: Update README badge
+        run: |
+          # Update the version badge in README.md
+          VERSION="${{ steps.extract-version.outputs.VERSION }}"
+          sed -i "s/version-[0-9]\+\.[0-9]\+\.[0-9]\+/version-${VERSION}/g" README.md
+          
+          # Verify the change was made
+          grep "version-" README.md
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Run tests
+        run: npm test
+        env:
+          NODE_ENV: test
+      
+      - name: Generate API spec
+        run: npm run generate-api-spec
+      
+      - name: Publish to NPM
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      
+      - name: Commit README changes to main branch
+        run: |
+          # Save current commit information
+          CURRENT_COMMIT=$(git rev-parse HEAD)
+          
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Checkout main branch
+          git fetch origin main:main
+          git checkout main
+          
+          # Update the version badge in README.md on main branch
+          VERSION="${{ steps.extract-version.outputs.VERSION }}"
+          sed -i "s/version-[0-9]\+\.[0-9]\+\.[0-9]\+/version-${VERSION}/g" README.md
+          
+          git add README.md
+          
+          # Only commit if there are changes
+          if ! git diff --staged --quiet; then
+            git commit -m "Update version badge to v${VERSION} [skip ci]"
+            git push origin main
+          fi
+          
+          # Return to the original commit
+          git checkout ${CURRENT_COMMIT}

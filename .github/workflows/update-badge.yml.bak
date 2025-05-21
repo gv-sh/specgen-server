@@ -46,6 +46,9 @@ jobs:
           
           BRANCH_NAME=$(git symbolic-ref --short HEAD)
           
+          # Pull latest changes to avoid conflicts
+          git pull --rebase origin $BRANCH_NAME
+          
           git add README.md
           
           # Check if there are changes to commit
@@ -55,4 +58,4 @@ jobs:
           fi
           
           git commit -m "Update version badge to v${{ steps.package-version.outputs.current-version }}"
-          git push origin $BRANCH_NAME
+          git push --force-with-lease origin $BRANCH_NAME
