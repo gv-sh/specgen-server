@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -42,6 +44,8 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
+          BRANCH_NAME=$(git symbolic-ref --short HEAD)
+          
           git add README.md
           
           # Check if there are changes to commit
@@ -51,4 +55,4 @@ jobs:
           fi
           
           git commit -m "Update version badge to v${{ steps.package-version.outputs.current-version }}"
-          git push
+          git push origin $BRANCH_NAME
