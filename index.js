@@ -23,7 +23,12 @@ function isPortAvailable(port) {
 
 // Function to find an available port
 async function findAvailablePort(startPort, maxAttempts = 10) {
-  // Use any available port starting from the provided one
+  // In production, use the exact port specified
+  if (process.env.NODE_ENV === 'production') {
+    return startPort;
+  }
+  
+  // In development, find an available port starting from 3000
   if (startPort < 3000) {
     startPort = 3000;
   }
@@ -44,6 +49,36 @@ let PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Production mode: serve React builds
+if (process.env.NODE_ENV === 'production') {
+  const path = require('path');
+  const fs = require('fs');
+  
+  // Serve admin at /admin
+  const adminBuildPath = path.join(process.cwd(), 'admin/build');
+  if (fs.existsSync(adminBuildPath)) {
+    app.use('/admin', express.static(adminBuildPath));
+    app.get('/admin/*', (req, res) => {
+      res.sendFile(path.join(adminBuildPath, 'index.html'));
+    });
+    console.log('✅ Admin interface available at /admin');
+  }
+  
+  // Serve user app at /app and root
+  const userBuildPath = path.join(process.cwd(), 'user/build');
+  if (fs.existsSync(userBuildPath)) {
+    app.use('/app', express.static(userBuildPath));
+    app.use('/', express.static(userBuildPath, { index: false }));
+    app.get('/app/*', (req, res) => {
+      res.sendFile(path.join(userBuildPath, 'index.html'));
+    });
+    app.get('/', (req, res) => {
+      res.sendFile(path.join(userBuildPath, 'index.html'));
+    });
+    console.log('✅ User interface available at /app and /');
+  }
+}
 
 // Routes
 const categoryRoutes = require('./routes/categories');
