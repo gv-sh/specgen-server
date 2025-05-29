@@ -19,6 +19,7 @@ uploads/
 data/*.db
 data/generated-content.db
 data/*.json
+!data/settings.json
 
 # IDE and editor files
 .idea/
