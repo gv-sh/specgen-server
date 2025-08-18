@@ -243,7 +243,7 @@ class AIService {
    * @returns {String} - Formatted prompt
    */
   formatImagePrompt(parameters, year = null, generatedText = null) {
-    let prompt = "Create a detailed, visually striking image";
+    let prompt = "Create a beautiful, detailed image";
     
     // If we have generated text, use it to create a more coherent image
     if (generatedText) {
@@ -251,17 +251,17 @@ class AIService {
       const visualElements = this.extractVisualElementsFromText(generatedText);
       
       if (visualElements.length > 0) {
-        prompt += ` depicting the following scene: ${visualElements.join(', ')}`;
+        prompt += ` showing this scene: ${visualElements.join(', ')}`;
       }
       
       // Add context from the generated text
-      prompt += "\n\nThis image should complement the following story:\n";
-      // Use the first 500 characters of the story for context
-      const storyExcerpt = generatedText.substring(0, 500) + (generatedText.length > 500 ? '...' : '');
+      prompt += "\n\nMake the image match this story:\n";
+      // Use the first 400 characters of the story for context
+      const storyExcerpt = generatedText.substring(0, 400) + (generatedText.length > 400 ? '...' : '');
       prompt += `"${storyExcerpt}"\n\n`;
     } else {
       // Fallback to parameter-based prompt when no text is provided
-      prompt += " with the following elements:\n\n";
+      prompt += " with these story elements:\n\n";
     }
     
     // If year is provided, add it to the prompt
@@ -296,8 +296,8 @@ class AIService {
       prompt += '.\n';
     });
     
-    // Get prompt suffix from settings
-    const defaultSuffix = "Use high-quality, photorealistic rendering with attention to lighting, detail, and composition. The image should be visually cohesive and striking.";
+    // Add India-specific visual style guidance
+    const defaultSuffix = "Make the image look realistic and vivid. Use warm, rich colors like those found in Indian art - golds, deep reds, saffron, and earthy tones. Include good lighting that brings out textures and details. If showing people, give them expressive faces and natural poses. The overall feeling should be engaging and authentic to Indian/South Asian culture.";
     prompt += `\n${defaultSuffix}`;
     
     return prompt;
@@ -316,9 +316,15 @@ class AIService {
     // Remove the title if present
     const cleanText = text.replace(/\*\*Title:.*?\*\*/, '').trim();
     
-    // Extract characters - improved patterns with better action words
+    // Extract characters - improved patterns with Indian names and titles
     const characterPatterns = [
+      // Western titles (keep existing)
       /(Dr\.|Professor|Captain|Agent|Detective)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/gi,
+      // Indian titles and honorifics
+      /(Pandit|Pundit|Guru|Swami|Baba|Seth|Sahib|Mahatma|Acharya)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/gi,
+      // Common Indian names with action words
+      /(Arjun|Priya|Raj|Kavya|Dev|Meera|Ravi|Anita|Vikram|Shreya|Kiran|Nisha|Amit|Pooja)\s+(stood|walked|ran|sat|looked|gazed|stared|stepped|entered|arrived|approached)/gi,
+      // Generic action patterns (keep existing)
       /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(stood|walked|ran|sat|looked|gazed|stared|stepped)/gi
     ];
     
@@ -342,11 +348,18 @@ class AIService {
       }
     }
     
-    // Extract locations and settings
+    // Extract locations and settings - enhanced with Indian places
     const locationPatterns = [
+      // Generic sci-fi locations (keep existing)
       /(in|at|on|through)\s+(the\s+)?([A-Z][a-z\s]{3,30}(?:city|planet|station|facility|dome|colony|ship|chamber|laboratory|castle|forest|mountain|desert|ocean|space))/gi,
-      /(starship|spaceship|vessel|craft|vehicle)\s+([A-Z][a-z]+)/gi,
-      /(colony|city|station|outpost|facility)\s+([A-Z][a-z\s]+)/gi
+      // Indian architectural and cultural places
+      /(in|at|on|through)\s+(the\s+)?([A-Z][a-z\s]{3,30}(?:temple|mandir|gurdwara|mosque|masjid|ashram|ghat|bazaar|market|haveli|palace|fort|courtyard|terrace|garden))/gi,
+      // Indian cities and regions
+      /(in|at|on|through)\s+(the\s+)?(Mumbai|Delhi|Bangalore|Chennai|Kolkata|Hyderabad|Pune|Ahmedabad|Jaipur|Kerala|Punjab|Gujarat|Rajasthan|Bengal|Maharashtra)\s*(city|region|state)?/gi,
+      // Vehicles and structures
+      /(starship|spaceship|vessel|craft|vehicle|train|bus|auto|rickshaw)\s+([A-Z][a-z]+)/gi,
+      // Settlements and facilities
+      /(colony|city|station|outpost|facility|village|town|settlement)\s+([A-Z][a-z\s]+)/gi
     ];
     
     for (const pattern of locationPatterns) {
@@ -361,42 +374,42 @@ class AIService {
       }
     }
     
-    // Extract objects and technology
-    // Pattern 1: adjective + noun combinations  
-    let matches = cleanText.match(/(advanced|alien|ancient|glowing|metallic|crystalline)\s+(scanner|device|weapon|tool|helmet|suit|console|terminal|reactor|portal|gateway|chamber|throne|altar|artifact)/gi);
+    // Extract objects and technology - enhanced with Indian cultural items
+    // Pattern 1: adjective + noun combinations (tech and cultural)
+    let matches = cleanText.match(/(advanced|alien|ancient|glowing|metallic|crystalline|golden|silver|ornate|carved|decorated)\s+(scanner|device|weapon|tool|helmet|suit|console|terminal|reactor|portal|gateway|chamber|throne|altar|artifact|tabla|sitar|diya|lamp|statue|idol|painting|tapestry|jewelry|bangles|necklace|turban|sari|dupatta)/gi);
     if (matches) {
       matches.forEach(match => {
         visualElements.push(match.trim());
       });
     }
     
-    // Pattern 2: standalone tech objects
-    matches = cleanText.match(/\b(scanner|device|weapon|tool|helmet|suit|console|terminal|reactor|portal|gateway|chamber|throne|altar|artifact)\b/gi);
+    // Pattern 2: standalone objects (tech and cultural)
+    matches = cleanText.match(/\b(scanner|device|weapon|tool|helmet|suit|console|terminal|reactor|portal|gateway|chamber|throne|altar|artifact|tabla|sitar|harmonium|veena|diya|diyas|lamp|lamps|incense|agarbatti|marigold|jasmine|lotus|rangoli|kolam|mandala|statue|idol|painting|tapestry|jewelry|bangles|necklace|turban|sari|dupatta|dhoti|kurta)\b/gi);
     if (matches) {
       matches.forEach(match => {
         visualElements.push(match.trim());
       });
     }
     
-    // Extract atmospheric elements
-    // Pattern 1: action + atmospheric combinations
-    matches = cleanText.match(/(glittering|shimmering|glowing|pulsing|swirling|drifting)\s+(purple\s+mist|mist|fog|clouds|dust|air)/gi);
+    // Extract atmospheric elements - enhanced with Indian weather and ambiance
+    // Pattern 1: action + atmospheric combinations (including monsoon elements)
+    matches = cleanText.match(/(glittering|shimmering|glowing|pulsing|swirling|drifting|falling|pouring|flowing)\s+(purple\s+mist|mist|fog|clouds|dust|air|rain|droplets|petals|smoke|steam)/gi);
     if (matches) {
       matches.forEach(match => {
         visualElements.push(match.trim());
       });
     }
     
-    // Pattern 2: color + atmospheric combinations
-    matches = cleanText.match(/(red|blue|green|golden|silver|purple|crimson)\s+(light|glow|aurora|mist|dust|sky)/gi);
+    // Pattern 2: color + atmospheric combinations (including warm Indian colors)
+    matches = cleanText.match(/(red|blue|green|golden|silver|purple|crimson|saffron|ochre|vermillion|henna)\s+(light|glow|aurora|mist|dust|sky|sunset|sunrise|flame|fire)/gi);
     if (matches) {
       matches.forEach(match => {
         visualElements.push(match.trim());
       });
     }
     
-    // Pattern 3: standalone atmospheric elements
-    matches = cleanText.match(/\b(chamber|storm|clouds|mist|fog|aurora|lightning)\b/gi);
+    // Pattern 3: standalone atmospheric elements (including Indian weather)
+    matches = cleanText.match(/\b(chamber|storm|clouds|mist|fog|aurora|lightning|monsoon|rain|sunshine|heat|humidity|breeze|wind|smoke|steam|flames|fire|candles)\b/gi);
     if (matches) {
       matches.forEach(match => {
         visualElements.push(match.trim());
