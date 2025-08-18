@@ -1,6 +1,6 @@
 {
   "name": "@gv-sh/specgen-server",
-  "version": "0.10.4",
+  "version": "0.11.0",
   "description": "SpecGen Server - API for Speculative Fiction Generator",
   "main": "index.js",
   "scripts": {
