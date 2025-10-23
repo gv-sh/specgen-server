@@ -8,12 +8,13 @@ class SQLiteService {
     // Determine database path based on environment
     // Construct paths manually without __filename
     let rootDir = path.resolve('.');
-    this.dbPath = globalThis.process?.env?.NODE_ENV === 'test'
+    const nodeEnv = (process && process.env && process.env.NODE_ENV) || 'development';
+    this.dbPath = nodeEnv === 'test'
       ? path.join(rootDir, 'data/test-generated-content.db')
       : path.join(rootDir, 'data/generated-content.db');
 
     // Ensure database directory exists
-    this.#ensureDatabaseDirectory();
+    this._ensureDatabaseDirectory();
 
     // Create or open the database
     this.db = new sqlite3.Database(this.dbPath, (err) => {
@@ -23,7 +24,7 @@ class SQLiteService {
     });
 
     // Create tables if they don't exist
-    this.#initializeTables();
+    this._initializeTables();
   }
   
   /**
@@ -39,7 +40,7 @@ class SQLiteService {
         }
 
         // Parse and map rows
-        const parsedRows = rows.map(row => this.#mapRowToObject(row));
+        const parsedRows = rows.map(row => this._mapRowToObject(row));
         resolve(parsedRows);
       });
     });
@@ -142,7 +143,7 @@ class SQLiteService {
    * Ensure database directory exists
    * @private
    */
-  async #ensureDatabaseDirectory() {
+  async _ensureDatabaseDirectory() {
     try {
       await fs.mkdir(path.dirname(this.dbPath), { recursive: true });
     } catch (error) {
@@ -151,10 +152,11 @@ class SQLiteService {
   }
 
   /**
-   * Initialize database tables
+   * Initialize database tables and indexes
    * @private
    */
-  #initializeTables() {
+  _initializeTables() {
+    // Create the main table first
     this.db.run(`
       CREATE TABLE IF NOT EXISTS generated_content (
         id TEXT PRIMARY KEY,
@@ -169,6 +171,60 @@ class SQLiteService {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Create indexes for performance optimization
+    this._createIndexes();
+  }
+
+  /**
+   * Create database indexes for improved query performance
+   * @private
+   */
+  _createIndexes() {
+    // Index for ORDER BY created_at DESC queries (most common)
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_generated_content_created_at 
+      ON generated_content(created_at DESC)
+    `);
+
+    // Index for type filtering
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_generated_content_type 
+      ON generated_content(type)
+    `);
+
+    // Index for year filtering
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_generated_content_year 
+      ON generated_content(year)
+    `);
+
+    // Composite index for combined type and year filtering with chronological ordering
+    // This covers: WHERE type = ? AND year = ? ORDER BY created_at DESC
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_generated_content_type_year_created 
+      ON generated_content(type, year, created_at DESC)
+    `);
+
+    // Composite index for type filtering with chronological ordering
+    // This covers: WHERE type = ? ORDER BY created_at DESC
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_generated_content_type_created 
+      ON generated_content(type, created_at DESC)
+    `);
+
+    // Composite index for year filtering with chronological ordering
+    // This covers: WHERE year = ? ORDER BY created_at DESC
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_generated_content_year_created 
+      ON generated_content(year, created_at DESC)
+    `);
+
+    // Index for updated_at (useful for tracking recent changes)
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_generated_content_updated_at 
+      ON generated_content(updated_at DESC)
+    `);
   }
 
   /**
@@ -177,7 +233,7 @@ class SQLiteService {
    * @param {string} jsonString - JSON string to parse
    * @returns {Object} - Parsed JSON or empty object
    */
-  #safeJSONParse(jsonString) {
+  _safeJSONParse(jsonString) {
     try {
       return jsonString ? JSON.parse(jsonString) : {};
     } catch (error) {
@@ -192,7 +248,7 @@ class SQLiteService {
    * @param {Object} row - Database row
    * @returns {Object} - Mapped object
    */
-  #mapRowToObject(row) {
+  _mapRowToObject(row) {
     if (!row) return null;
 
     return {
@@ -201,8 +257,8 @@ class SQLiteService {
       type: row.type,
       content: row.content,
       imageData: row.image_data,
-      parameterValues: this.#safeJSONParse(row.parameter_values),
-      metadata: this.#safeJSONParse(row.metadata),
+      parameterValues: this._safeJSONParse(row.parameter_values),
+      metadata: this._safeJSONParse(row.metadata),
       year: row.year, // Add year to the mapped object
       createdAt: row.created_at,
       updatedAt: row.updated_at
@@ -316,7 +372,7 @@ class SQLiteService {
           }
 
           // Parse and map rows
-          const parsedRows = rows.map(row => this.#mapRowToObject(row));
+          const parsedRows = rows.map(row => this._mapRowToObject(row));
           
           resolve({
             data: parsedRows,
@@ -399,8 +455,8 @@ class SQLiteService {
             title: row.title,
             type: row.type,
             year: row.year,
-            parameterValues: this.#safeJSONParse(row.parameter_values),
-            metadata: this.#safeJSONParse(row.metadata),
+            parameterValues: this._safeJSONParse(row.parameter_values),
+            metadata: this._safeJSONParse(row.metadata),
             createdAt: row.created_at,
             updatedAt: row.updated_at,
             hasImage: Boolean(row.has_image)
@@ -435,7 +491,7 @@ class SQLiteService {
           return;
         }
 
-        resolve(this.#mapRowToObject(row));
+        resolve(this._mapRowToObject(row));
       });
     });
   }
@@ -557,7 +613,7 @@ class SQLiteService {
         }
 
         // Parse and map rows
-        const parsedRows = rows.map(row => this.#mapRowToObject(row));
+        const parsedRows = rows.map(row => this._mapRowToObject(row));
         resolve(parsedRows);
       });
     });
@@ -578,6 +634,114 @@ class SQLiteService {
         // Extract year values
         const years = rows.map(row => row.year);
         resolve(years);
+      });
+    });
+  }
+
+  /**
+   * Get database performance information including index usage
+   * @returns {Promise<Object>} - Database performance metrics
+   */
+  getDatabaseInfo() {
+    return new Promise((resolve, reject) => {
+      // Get all indexes
+      this.db.all("SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='generated_content'", (err, indexes) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        // Get table info
+        this.db.all("PRAGMA table_info(generated_content)", (err, tableInfo) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          // Get total record count
+          this.db.get("SELECT COUNT(*) as total FROM generated_content", (err, countResult) => {
+            if (err) {
+              reject(err);
+              return;
+            }
+
+            resolve({
+              totalRecords: countResult.total,
+              indexes: indexes.map(idx => ({
+                name: idx.name,
+                sql: idx.sql
+              })),
+              columns: tableInfo.map(col => ({
+                name: col.name,
+                type: col.type,
+                notNull: Boolean(col.notnull),
+                primaryKey: Boolean(col.pk)
+              }))
+            });
+          });
+        });
+      });
+    });
+  }
+
+  /**
+   * Analyze query performance for a specific query
+   * @param {string} query - SQL query to analyze
+   * @param {Array} params - Query parameters
+   * @returns {Promise<Object>} - Query execution plan
+   */
+  analyzeQuery(query, params = []) {
+    return new Promise((resolve, reject) => {
+      const explainQuery = `EXPLAIN QUERY PLAN ${query}`;
+      
+      this.db.all(explainQuery, params, (err, plan) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        resolve({
+          query,
+          executionPlan: plan.map(step => ({
+            id: step.id,
+            parent: step.parent,
+            notused: step.notused,
+            detail: step.detail
+          }))
+        });
+      });
+    });
+  }
+
+  /**
+   * Run database maintenance operations
+   * @returns {Promise<Object>} - Maintenance results
+   */
+  runMaintenance() {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      
+      // Run ANALYZE to update query planner statistics
+      this.db.run("ANALYZE", (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        // Run VACUUM to reclaim space and defragment
+        this.db.run("VACUUM", (err) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          const endTime = Date.now();
+          resolve({
+            operations: ['ANALYZE', 'VACUUM'],
+            duration: endTime - startTime,
+            message: 'Database maintenance completed successfully'
+          });
+        });
       });
     });
   }
