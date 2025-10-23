@@ -264,13 +264,16 @@ class SQLiteService {
   }
 
   /**
-   * Get all generated content with optional filtering
+   * Get all generated content with optional filtering and pagination
    * @param {Object} filters - Optional filters 
-   * @returns {Promise<Array>} - Generated content items
+   * @returns {Promise<Object>} - Generated content items with pagination info
    */
   getGeneratedContent(filters = {}) {
     return new Promise((resolve, reject) => {
-      let query = 'SELECT * FROM generated_content';
+      const { page = 1, limit = 20 } = filters;
+      const offset = (page - 1) * limit;
+
+      // Build WHERE clause
       const whereClauses = [];
       const params = [];
 
@@ -286,29 +289,135 @@ class SQLiteService {
         params.push(filters.year);
       }
 
-      // Add WHERE clause if filters exist
-      if (whereClauses.length > 0) {
-        query += ' WHERE ' + whereClauses.join(' AND ');
-      }
+      const whereClause = whereClauses.length > 0 
+        ? ' WHERE ' + whereClauses.join(' AND ')
+        : '';
 
-      // Add ordering by most recent first
-      query += ' ORDER BY created_at DESC';
-
-      // Add limit if provided
-      if (filters.limit) {
-        query += ' LIMIT ?';
-        params.push(filters.limit);
-      }
-
-      this.db.all(query, params, (err, rows) => {
+      // First, get total count for pagination
+      const countQuery = `SELECT COUNT(*) as total FROM generated_content${whereClause}`;
+      
+      this.db.get(countQuery, params, (err, countResult) => {
         if (err) {
           reject(err);
           return;
         }
 
-        // Parse and map rows
-        const parsedRows = rows.map(row => this.#mapRowToObject(row));
-        resolve(parsedRows);
+        const total = countResult.total;
+        const totalPages = Math.ceil(total / limit);
+
+        // Then get the actual data with pagination
+        let dataQuery = `SELECT * FROM generated_content${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        const dataParams = [...params, limit, offset];
+
+        this.db.all(dataQuery, dataParams, (err, rows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          // Parse and map rows
+          const parsedRows = rows.map(row => this.#mapRowToObject(row));
+          
+          resolve({
+            data: parsedRows,
+            pagination: {
+              page: parseInt(page),
+              limit: parseInt(limit),
+              total,
+              totalPages,
+              hasNext: page < totalPages,
+              hasPrev: page > 1
+            }
+          });
+        });
+      });
+    });
+  }
+
+  /**
+   * Get content summary without image data for efficient loading
+   * @param {Object} filters - Optional filters with pagination
+   * @returns {Promise<Object>} - Content summaries with pagination info
+   */
+  getContentSummary(filters = {}) {
+    return new Promise((resolve, reject) => {
+      const { page = 1, limit = 20 } = filters;
+      const offset = (page - 1) * limit;
+
+      // Build WHERE clause
+      const whereClauses = [];
+      const params = [];
+
+      // Add filters
+      if (filters.type) {
+        whereClauses.push('type = ?');
+        params.push(filters.type);
+      }
+
+      if (filters.year) {
+        whereClauses.push('year = ?');
+        params.push(filters.year);
+      }
+
+      const whereClause = whereClauses.length > 0 
+        ? ' WHERE ' + whereClauses.join(' AND ')
+        : '';
+
+      // First, get total count for pagination
+      const countQuery = `SELECT COUNT(*) as total FROM generated_content${whereClause}`;
+      
+      this.db.get(countQuery, params, (err, countResult) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        const total = countResult.total;
+        const totalPages = Math.ceil(total / limit);
+
+        // Get summary data (exclude content and image_data, but include hasImage flag)
+        let summaryQuery = `
+          SELECT 
+            id, title, type, year, parameter_values, metadata, 
+            created_at, updated_at,
+            CASE WHEN image_data IS NOT NULL THEN 1 ELSE 0 END as has_image
+          FROM generated_content${whereClause} 
+          ORDER BY created_at DESC 
+          LIMIT ? OFFSET ?
+        `;
+        const summaryParams = [...params, limit, offset];
+
+        this.db.all(summaryQuery, summaryParams, (err, rows) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+
+          // Map rows to summary objects
+          const summaries = rows.map(row => ({
+            id: row.id,
+            title: row.title,
+            type: row.type,
+            year: row.year,
+            parameterValues: this.#safeJSONParse(row.parameter_values),
+            metadata: this.#safeJSONParse(row.metadata),
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+            hasImage: Boolean(row.has_image)
+          }));
+          
+          resolve({
+            data: summaries,
+            pagination: {
+              page: parseInt(page),
+              limit: parseInt(limit),
+              total,
+              totalPages,
+              hasNext: page < totalPages,
+              hasPrev: page > 1
+            }
+          });
+        });
       });
     });
   }

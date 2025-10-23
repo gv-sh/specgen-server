@@ -3,6 +3,7 @@
 const { Buffer } = require('buffer');
 const { request, initDatabase } = require('./setup');
 const databaseService = require('../services/databaseService');
+const sqliteService = require('../services/sqliteService');
 // aiService is mocked later
 
 const mockImageData = Buffer.from('test-image-data');
@@ -285,5 +286,97 @@ describe('Generated Content API Tests', () => {
     const contentResponse = await request.get(`/api/content/${response.body.id}`);
     expect(contentResponse.status).toBe(200);
     expect(contentResponse.body.data).toHaveProperty('imageData', response.body.imageData);
+  });
+
+  // New pagination and summary endpoint tests
+  describe('Pagination and Summary Features', () => {
+    test('GET /api/content with pagination - Should return paginated results', async () => {
+      const response = await request.get('/api/content?page=1&limit=10');
+      
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body).toHaveProperty('pagination');
+      expect(response.body.pagination).toHaveProperty('page', 1);
+      expect(response.body.pagination).toHaveProperty('limit', 10);
+      expect(response.body.pagination).toHaveProperty('total');
+      expect(response.body.pagination).toHaveProperty('totalPages');
+      expect(response.body.pagination).toHaveProperty('hasNext');
+      expect(response.body.pagination).toHaveProperty('hasPrev', false);
+      
+      // Verify data doesn't include image data
+      response.body.data.forEach(item => {
+        expect(item).not.toHaveProperty('imageData');
+        if (item.type === 'image' || item.type === 'combined') {
+          expect(item).toHaveProperty('hasImage');
+        }
+      });
+    });
+
+    test('GET /api/content/summary - Should return content summaries', async () => {
+      const response = await request.get('/api/content/summary?page=1&limit=5');
+      
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body).toHaveProperty('pagination');
+      
+      // Verify summary structure
+      response.body.data.forEach(item => {
+        expect(item).toHaveProperty('id');
+        expect(item).toHaveProperty('title');
+        expect(item).toHaveProperty('type');
+        expect(item).toHaveProperty('createdAt');
+        expect(item).toHaveProperty('updatedAt');
+        
+        // Should not have image data or content
+        expect(item).not.toHaveProperty('imageData');
+        expect(item).not.toHaveProperty('content');
+        
+        // Should have hasImage flag if applicable
+        if (item.type === 'image' || item.type === 'combined') {
+          expect(item).toHaveProperty('hasImage');
+        }
+      });
+    });
+
+    test('GET /api/content/:id/image - Should return image data', async () => {
+      // First create content with image
+      const mockImageData = Buffer.from('fake-image-data');
+      const content = {
+        id: 'test-image-content',
+        title: 'Test Image Content',
+        type: 'image',
+        imageData: mockImageData,
+        parameterValues: {},
+        metadata: {}
+      };
+      
+      await sqliteService.saveGeneratedContent(content);
+      
+      const response = await request.get('/api/content/test-image-content/image');
+      
+      expect(response.status).toBe(200);
+      expect(response.headers['content-type']).toBe('image/png');
+      expect(response.headers['cache-control']).toBe('public, max-age=86400');
+      expect(response.headers['etag']).toBeDefined();
+      expect(response.body).toEqual(mockImageData);
+    });
+
+    test('GET /api/content/:id/image - Should return 404 for non-existent image', async () => {
+      const response = await request.get('/api/content/non-existent/image');
+      
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('success', false);
+      expect(response.body).toHaveProperty('error', 'Image not found');
+    });
+
+    test('GET /api/content with invalid pagination - Should use defaults', async () => {
+      const response = await request.get('/api/content?page=-1&limit=1000');
+      
+      expect(response.status).toBe(200);
+      expect(response.body.pagination.page).toBe(1); // Should default to 1
+      expect(response.body.pagination.limit).toBe(100); // Should cap at 100
+    });
   });
 });

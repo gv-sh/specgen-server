@@ -155,6 +155,93 @@ router.get('/', contentController.getAllContent);
 
 /**
  * @swagger
+ * /api/content/summary:
+ *   get:
+ *     summary: Get content summaries without image data
+ *     description: Retrieve content metadata for efficient listing and navigation
+ *     tags: [Content]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number (starts from 1)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Items per page (max 100)
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [fiction, image, combined]
+ *         description: Filter by content type
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *         description: Filter by year
+ *     responses:
+ *       200:
+ *         description: Content summaries with pagination
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       title:
+ *                         type: string
+ *                       type:
+ *                         type: string
+ *                         enum: [fiction, image, combined]
+ *                       year:
+ *                         type: integer
+ *                       hasImage:
+ *                         type: boolean
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                     hasNext:
+ *                       type: boolean
+ *                     hasPrev:
+ *                       type: boolean
+ *       500:
+ *         $ref: '#/components/responses/Error'
+ */
+router.get('/summary', contentController.getContentSummary);
+
+/**
+ * @swagger
  * /api/content/years:
  *   get:
  *     summary: Get all years with content
@@ -206,6 +293,56 @@ router.get('/years', contentController.getAvailableYears);
  *         $ref: '#/components/responses/Error'
  */
 router.get('/year/:year', contentController.getContentByYear);
+
+/**
+ * @swagger
+ * /api/content/{id}/image:
+ *   get:
+ *     summary: Get image for a specific content item
+ *     description: Retrieve binary image data for a content item that has an image
+ *     tags: [Content]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Content ID
+ *     responses:
+ *       200:
+ *         description: Binary image data
+ *         content:
+ *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *         headers:
+ *           Cache-Control:
+ *             description: Cache control header (24 hours)
+ *             schema:
+ *               type: string
+ *               example: "public, max-age=86400"
+ *           ETag:
+ *             description: Entity tag for caching
+ *             schema:
+ *               type: string
+ *       404:
+ *         description: Image not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Image not found"
+ *       500:
+ *         $ref: '#/components/responses/Error'
+ */
+router.get('/:id/image', contentController.getContentImage);
 
 /**
  * @swagger
