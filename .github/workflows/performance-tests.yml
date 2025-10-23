@@ -1,0 +1,257 @@
+name: Performance Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run performance tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    # Allow manual triggering
+    inputs:
+      test_type:
+        description: 'Type of performance tests to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - content_endpoints
+        - database_performance
+        - load_testing
+
+env:
+  NODE_ENV: test
+  PORT: 3001
+
+jobs:
+  performance-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Create performance results directory
+      run: mkdir -p performance-results
+
+    - name: Run lint and basic tests first
+      run: |
+        npm run lint || true  # Don't fail on lint errors
+        npm test tests/setup.js  # Verify test setup works
+
+    - name: Run performance tests
+      id: perf-tests
+      run: |
+        # Make script executable
+        chmod +x scripts/run-performance-tests.sh
+        
+        # Run performance tests
+        ./scripts/run-performance-tests.sh
+      continue-on-error: true
+
+    - name: Parse performance results
+      id: parse-results
+      run: |
+        # Find the latest performance results file
+        RESULTS_FILE=$(ls -t performance-results/performance_*.json | head -1)
+        
+        if [ -f "$RESULTS_FILE" ]; then
+          echo "results_file=$RESULTS_FILE" >> $GITHUB_OUTPUT
+          
+          # Extract summary for job output
+          SUMMARY=$(node -e "
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('$RESULTS_FILE'));
+            if (results.summary) {
+              console.log(\`Total: \${results.summary.total}, Passed: \${results.summary.passed}, Failed: \${results.summary.failed}, Success Rate: \${results.summary.success_rate}\`);
+            } else {
+              console.log('No summary available');
+            }
+          ")
+          echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
+          
+          # Check if tests passed
+          TESTS_PASSED=$(node -e "
+            const fs = require('fs');
+            const results = JSON.parse(fs.readFileSync('$RESULTS_FILE'));
+            console.log(results.summary && results.summary.failed === 0 ? 'true' : 'false');
+          ")
+          echo "tests_passed=$TESTS_PASSED" >> $GITHUB_OUTPUT
+        else
+          echo "No performance results file found"
+          echo "tests_passed=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: performance-results-node-${{ matrix.node-version }}
+        path: |
+          performance-results/
+          tmp/test_server.log
+        retention-days: 30
+
+    - name: Comment on PR with performance results
+      if: github.event_name == 'pull_request' && steps.parse-results.outputs.results_file
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const resultsFile = '${{ steps.parse-results.outputs.results_file }}';
+          
+          if (fs.existsSync(resultsFile)) {
+            const results = JSON.parse(fs.readFileSync(resultsFile));
+            
+            let comment = `## 🚀 Performance Test Results (Node.js ${{ matrix.node-version }})\n\n`;
+            comment += `**Summary:** ${{ steps.parse-results.outputs.summary }}\n\n`;
+            
+            if (results.tests) {
+              comment += `### Test Details\n\n`;
+              Object.entries(results.tests).forEach(([name, result]) => {
+                const status = result.status === 'passed' ? '✅' : '❌';
+                comment += `- ${status} **${name}** (${result.details.duration}s)\n`;
+                
+                if (result.status === 'failed' && result.details.error) {
+                  comment += `  - Error: ${result.details.error}\n`;
+                }
+              });
+            }
+            
+            if (results.environment) {
+              comment += `\n### Environment\n`;
+              comment += `- Node.js: ${results.environment.node_version}\n`;
+              comment += `- OS: ${results.environment.os} ${results.environment.arch}\n`;
+            }
+            
+            comment += `\n*Performance tests run at ${results.timestamp}*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+          }
+
+    - name: Create performance benchmark baseline
+      if: github.ref == 'refs/heads/main' && steps.parse-results.outputs.tests_passed == 'true'
+      run: |
+        # Copy results to baseline for future comparisons
+        RESULTS_FILE="${{ steps.parse-results.outputs.results_file }}"
+        if [ -f "$RESULTS_FILE" ]; then
+          cp "$RESULTS_FILE" "performance-results/baseline.json"
+          echo "Created new performance baseline"
+        fi
+
+    - name: Performance regression check
+      if: steps.parse-results.outputs.results_file
+      run: |
+        RESULTS_FILE="${{ steps.parse-results.outputs.results_file }}"
+        BASELINE_FILE="performance-results/baseline.json"
+        
+        if [ -f "$BASELINE_FILE" ] && [ -f "$RESULTS_FILE" ]; then
+          echo "Checking for performance regressions..."
+          
+          node -e "
+            const fs = require('fs');
+            const baseline = JSON.parse(fs.readFileSync('$BASELINE_FILE'));
+            const current = JSON.parse(fs.readFileSync('$RESULTS_FILE'));
+            
+            console.log('Performance Regression Analysis:');
+            console.log('================================');
+            
+            let regressions = [];
+            
+            // Compare test durations
+            Object.entries(current.tests).forEach(([testName, currentResult]) => {
+              if (baseline.tests && baseline.tests[testName]) {
+                const baselineDuration = baseline.tests[testName].details.duration;
+                const currentDuration = currentResult.details.duration;
+                const increase = ((currentDuration - baselineDuration) / baselineDuration) * 100;
+                
+                console.log(\`\${testName}: \${baselineDuration}s -> \${currentDuration}s (\${increase.toFixed(1)}% change)\`);
+                
+                if (increase > 20) {  // 20% increase threshold
+                  regressions.push(\`\${testName}: \${increase.toFixed(1)}% slower\`);
+                }
+              }
+            });
+            
+            if (regressions.length > 0) {
+              console.log('\\n⚠️  Performance Regressions Detected:');
+              regressions.forEach(regression => console.log(\`  - \${regression}\`));
+              
+              // Don't fail the build for regressions, just warn
+              console.log('\\n(This is a warning, not a failure)');
+            } else {
+              console.log('\\n✅ No significant performance regressions detected');
+            }
+          "
+        else
+          echo "No baseline available for comparison"
+        fi
+
+    - name: Fail job if performance tests failed
+      if: steps.parse-results.outputs.tests_passed == 'false'
+      run: |
+        echo "❌ Performance tests failed"
+        exit 1
+
+  load-testing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'schedule' || github.event.inputs.test_type == 'load_testing' || github.event.inputs.test_type == 'all'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run load testing
+      run: |
+        # Start server in background
+        npm start &
+        SERVER_PID=$!
+        
+        # Wait for server to be ready
+        sleep 10
+        
+        # Run load test
+        timeout 180 node tests/performance/load-test.js || true
+        
+        # Stop server
+        kill $SERVER_PID || true
+
+    - name: Upload load test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: load-test-results
+        path: performance-results/
+        retention-days: 7
