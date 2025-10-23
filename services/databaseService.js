@@ -334,12 +334,21 @@ class DatabaseService {
   }
 
   /**
-   * Get all generated content
-   * @param {Object} filters - Optional filters (type, title, etc.)
-   * @returns {Promise<Array>} - All generated content matching filters
+   * Get all generated content with pagination
+   * @param {Object} filters - Optional filters (type, year, page, limit, etc.)
+   * @returns {Promise<Object>} - Generated content with pagination info
    */
   async getGeneratedContent(filters = {}) {
     return sqliteService.getGeneratedContent(filters);
+  }
+
+  /**
+   * Get content summary without image data for efficient loading
+   * @param {Object} filters - Optional filters with pagination
+   * @returns {Promise<Object>} - Content summaries with pagination info
+   */
+  async getContentSummary(filters = {}) {
+    return sqliteService.getContentSummary(filters);
   }
 
   /**

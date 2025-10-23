@@ -7,31 +7,131 @@ const { Buffer } = require('buffer');
  */
 const contentController = {
   /**
-   * Get all generated content, with optional filtering
+   * Get all generated content, with optional filtering and pagination
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    * @param {Function} next - Express next middleware function
    */
   async getAllContent(req, res, next) {
     try {
-      const { type, year } = req.query;
-      const filters = {};
+      const { type, year, page = 1, limit = 20 } = req.query;
+      
+      // Validate pagination parameters
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20)); // Max 100 items per page
+      
+      const filters = {
+        page: pageNum,
+        limit: limitNum
+      };
+      
       if (type) filters.type = type;
       if (year) filters.year = parseInt(year);
   
-      const content = await databaseService.getGeneratedContent(filters);
+      const result = await databaseService.getGeneratedContent(filters);
       
-      // Convert imageData to base64 for both image and combined types
-      content.forEach(item => {
-        if ((item.type === 'image' || item.type === 'combined') && item.imageData) {
-          item.imageData = item.imageData.toString('base64');
+      // For backward compatibility, if no pagination was requested, return just the data
+      // This ensures existing API consumers continue to work
+      if (!req.query.page && !req.query.limit) {
+        // Process items to remove image data and add hasImage flag
+        result.data.forEach(item => {
+          if (item.type === 'image' || item.type === 'combined') {
+            item.hasImage = Boolean(item.imageData);
+          }
+          // Always remove imageData for performance, regardless of type
+          if (item.hasOwnProperty('imageData')) {
+            delete item.imageData;
+          }
+        });
+        
+        return res.status(200).json({
+          success: true,
+          data: result.data
+        });
+      }
+
+      // For paginated requests, exclude image data entirely for performance
+      result.data.forEach(item => {
+        if (item.type === 'image' || item.type === 'combined') {
+          item.hasImage = Boolean(item.imageData);
+        }
+        // Always remove imageData for performance, regardless of type
+        if (item.hasOwnProperty('imageData')) {
+          delete item.imageData;
         }
       });
   
       res.status(200).json({
         success: true,
-        data: content
+        data: result.data,
+        pagination: result.pagination
       });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Get content summary without image data for efficient loading
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  async getContentSummary(req, res, next) {
+    try {
+      const { type, year, page = 1, limit = 20 } = req.query;
+      
+      // Validate pagination parameters
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 20)); // Max 100 items per page
+      
+      const filters = {
+        page: pageNum,
+        limit: limitNum
+      };
+      
+      if (type) filters.type = type;
+      if (year) filters.year = parseInt(year);
+
+      const result = await databaseService.getContentSummary(filters);
+      
+      res.status(200).json({
+        success: true,
+        data: result.data,
+        pagination: result.pagination
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
+   * Get image data for a specific content item
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   * @param {Function} next - Express next middleware function
+   */
+  async getContentImage(req, res, next) {
+    try {
+      const { id } = req.params;
+      const content = await databaseService.getContentById(id);
+
+      if (!content || !content.imageData) {
+        return res.status(404).json({
+          success: false,
+          error: 'Image not found'
+        });
+      }
+
+      // Set caching headers (24 hours)
+      res.set({
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=86400', // 24 hours
+        'ETag': `"${Buffer.from(content.id).toString('base64')}"` // Simple ETag based on content ID
+      });
+
+      // Send binary image data
+      res.send(content.imageData);
     } catch (error) {
       next(error);
     }
