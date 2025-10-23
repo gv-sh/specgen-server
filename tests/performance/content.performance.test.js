@@ -16,8 +16,10 @@ const PERFORMANCE_BENCHMARKS = {
 describe('Content Loading Endpoints Performance Tests', () => {
   let testData = [];
   const DATASET_SIZE = 500; // Manageable size for performance testing
+  const NODE_VERSION = process.version;
 
   beforeAll(async () => {
+    console.log(`Running performance tests on Node.js ${NODE_VERSION}`);
     await initDatabase();
     
     // Clear existing data
