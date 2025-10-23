@@ -8,12 +8,13 @@ class SQLiteService {
     // Determine database path based on environment
     // Construct paths manually without __filename
     let rootDir = path.resolve('.');
-    this.dbPath = globalThis.process?.env?.NODE_ENV === 'test'
+    const nodeEnv = (process && process.env && process.env.NODE_ENV) || 'development';
+    this.dbPath = nodeEnv === 'test'
       ? path.join(rootDir, 'data/test-generated-content.db')
       : path.join(rootDir, 'data/generated-content.db');
 
     // Ensure database directory exists
-    this.#ensureDatabaseDirectory();
+    this._ensureDatabaseDirectory();
 
     // Create or open the database
     this.db = new sqlite3.Database(this.dbPath, (err) => {
@@ -23,7 +24,7 @@ class SQLiteService {
     });
 
     // Create tables if they don't exist
-    this.#initializeTables();
+    this._initializeTables();
   }
   
   /**
@@ -39,7 +40,7 @@ class SQLiteService {
         }
 
         // Parse and map rows
-        const parsedRows = rows.map(row => this.#mapRowToObject(row));
+        const parsedRows = rows.map(row => this._mapRowToObject(row));
         resolve(parsedRows);
       });
     });
@@ -142,7 +143,7 @@ class SQLiteService {
    * Ensure database directory exists
    * @private
    */
-  async #ensureDatabaseDirectory() {
+  async _ensureDatabaseDirectory() {
     try {
       await fs.mkdir(path.dirname(this.dbPath), { recursive: true });
     } catch (error) {
@@ -154,7 +155,7 @@ class SQLiteService {
    * Initialize database tables and indexes
    * @private
    */
-  #initializeTables() {
+  _initializeTables() {
     // Create the main table first
     this.db.run(`
       CREATE TABLE IF NOT EXISTS generated_content (
@@ -172,14 +173,14 @@ class SQLiteService {
     `);
 
     // Create indexes for performance optimization
-    this.#createIndexes();
+    this._createIndexes();
   }
 
   /**
    * Create database indexes for improved query performance
    * @private
    */
-  #createIndexes() {
+  _createIndexes() {
     // Index for ORDER BY created_at DESC queries (most common)
     this.db.run(`
       CREATE INDEX IF NOT EXISTS idx_generated_content_created_at 
@@ -232,7 +233,7 @@ class SQLiteService {
    * @param {string} jsonString - JSON string to parse
    * @returns {Object} - Parsed JSON or empty object
    */
-  #safeJSONParse(jsonString) {
+  _safeJSONParse(jsonString) {
     try {
       return jsonString ? JSON.parse(jsonString) : {};
     } catch (error) {
@@ -247,7 +248,7 @@ class SQLiteService {
    * @param {Object} row - Database row
    * @returns {Object} - Mapped object
    */
-  #mapRowToObject(row) {
+  _mapRowToObject(row) {
     if (!row) return null;
 
     return {
@@ -256,8 +257,8 @@ class SQLiteService {
       type: row.type,
       content: row.content,
       imageData: row.image_data,
-      parameterValues: this.#safeJSONParse(row.parameter_values),
-      metadata: this.#safeJSONParse(row.metadata),
+      parameterValues: this._safeJSONParse(row.parameter_values),
+      metadata: this._safeJSONParse(row.metadata),
       year: row.year, // Add year to the mapped object
       createdAt: row.created_at,
       updatedAt: row.updated_at
@@ -371,7 +372,7 @@ class SQLiteService {
           }
 
           // Parse and map rows
-          const parsedRows = rows.map(row => this.#mapRowToObject(row));
+          const parsedRows = rows.map(row => this._mapRowToObject(row));
           
           resolve({
             data: parsedRows,
@@ -454,8 +455,8 @@ class SQLiteService {
             title: row.title,
             type: row.type,
             year: row.year,
-            parameterValues: this.#safeJSONParse(row.parameter_values),
-            metadata: this.#safeJSONParse(row.metadata),
+            parameterValues: this._safeJSONParse(row.parameter_values),
+            metadata: this._safeJSONParse(row.metadata),
             createdAt: row.created_at,
             updatedAt: row.updated_at,
             hasImage: Boolean(row.has_image)
@@ -490,7 +491,7 @@ class SQLiteService {
           return;
         }
 
-        resolve(this.#mapRowToObject(row));
+        resolve(this._mapRowToObject(row));
       });
     });
   }
@@ -612,7 +613,7 @@ class SQLiteService {
         }
 
         // Parse and map rows
-        const parsedRows = rows.map(row => this.#mapRowToObject(row));
+        const parsedRows = rows.map(row => this._mapRowToObject(row));
         resolve(parsedRows);
       });
     });
