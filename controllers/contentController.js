@@ -39,7 +39,7 @@ const contentController = {
             item.hasImage = Boolean(item.imageData);
           }
           // Always remove imageData for performance, regardless of type
-          if (item.hasOwnProperty('imageData')) {
+          if (Object.hasOwn(item, 'imageData')) {
             delete item.imageData;
           }
         });
@@ -56,7 +56,7 @@ const contentController = {
           item.hasImage = Boolean(item.imageData);
         }
         // Always remove imageData for performance, regardless of type
-        if (item.hasOwnProperty('imageData')) {
+        if (Object.hasOwn(item, 'imageData')) {
           delete item.imageData;
         }
       });
