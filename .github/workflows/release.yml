@@ -43,6 +43,7 @@ jobs:
         run: npm test
         env:
           NODE_ENV: test
+          OPENAI_API_KEY: mock-key-for-testing
       
       - name: Generate API spec
         run: npm run generate-api-spec

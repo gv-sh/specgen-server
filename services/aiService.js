@@ -13,7 +13,7 @@ class AIService {
     this.chatCompletionUrl = `${this.baseUrl}/chat/completions`;
     this.imageGenerationUrl = `${this.baseUrl}/images/generations`;
     
-    if (!this.apiKey) {
+    if (!this.apiKey && globalThis.process?.env?.NODE_ENV !== 'test') {
       console.error('ERROR: OPENAI_API_KEY not set in environment variables');
     }
   }

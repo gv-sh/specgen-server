@@ -22,6 +22,9 @@ describe('Content Loading Endpoints Performance Tests', () => {
     console.log(`Running performance tests on Node.js ${NODE_VERSION}`);
     await initDatabase();
     
+    // Ensure SQLite service is properly initialized
+    await sqliteService.ensureInitialized();
+    
     // Clear existing data
     await sqliteService.resetGeneratedContent();
 

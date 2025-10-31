@@ -6,6 +6,9 @@ describe('Database Indexing Performance Tests', () => {
   const LARGE_DATASET_SIZE = 1000;
 
   beforeAll(async () => {
+    // Ensure SQLite service is properly initialized
+    await sqliteService.ensureInitialized();
+    
     // Clear existing test data
     await sqliteService.resetGeneratedContent();
 

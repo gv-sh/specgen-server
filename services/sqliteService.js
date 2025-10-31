@@ -13,25 +13,65 @@ class SQLiteService {
       ? path.join(rootDir, 'data/test-generated-content.db')
       : path.join(rootDir, 'data/generated-content.db');
 
-    // Ensure database directory exists
-    this._ensureDatabaseDirectory();
+    // Promise to track initialization completion
+    this._initialized = this._initialize();
+  }
 
-    // Create or open the database
-    this.db = new sqlite3.Database(this.dbPath, (err) => {
-      if (err) {
-        console.error('Error opening database', err);
-      }
-    });
+  /**
+   * Initialize database connection and tables
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _initialize() {
+    try {
+      // Ensure database directory exists
+      await this._ensureDatabaseDirectory();
 
-    // Create tables if they don't exist
-    this._initializeTables();
+      // Create or open the database
+      this.db = await new Promise((resolve, reject) => {
+        const database = new sqlite3.Database(this.dbPath, (err) => {
+          if (err) {
+            console.error('Error opening database', err);
+            reject(err);
+          } else {
+            resolve(database);
+          }
+        });
+      });
+
+      // Create tables if they don't exist
+      await this._initializeTables();
+    } catch (error) {
+      console.error('Error initializing SQLite service:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ensure service is initialized before performing operations
+   * @returns {Promise<void>}
+   */
+  async _ensureInitialized() {
+    if (this._initialized) {
+      await this._initialized;
+    }
+  }
+
+  /**
+   * Public method to ensure initialization is complete
+   * Useful for tests and setup scripts
+   * @returns {Promise<void>}
+   */
+  async ensureInitialized() {
+    return this._ensureInitialized();
   }
   
   /**
    * Get all generated content for backup purposes
    * @returns {Promise<Array>} - All generated content items
    */
-  getAllGenerationsForBackup() {
+  async getAllGenerationsForBackup() {
+    await this._ensureInitialized();
     return new Promise((resolve, reject) => {
       this.db.all('SELECT * FROM generated_content ORDER BY created_at DESC', [], (err, rows) => {
         if (err) {
@@ -154,77 +194,93 @@ class SQLiteService {
   /**
    * Initialize database tables and indexes
    * @private
+   * @returns {Promise<void>}
    */
   _initializeTables() {
-    // Create the main table first
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS generated_content (
-        id TEXT PRIMARY KEY,
-        title TEXT,
-        type TEXT NOT NULL,
-        content TEXT,
-        image_data BLOB,
-        parameter_values TEXT,
-        metadata TEXT,
-        year INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    return new Promise((resolve, reject) => {
+      // Create the main table first
+      this.db.run(`
+        CREATE TABLE IF NOT EXISTS generated_content (
+          id TEXT PRIMARY KEY,
+          title TEXT,
+          type TEXT NOT NULL,
+          content TEXT,
+          image_data BLOB,
+          parameter_values TEXT,
+          metadata TEXT,
+          year INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `, (err) => {
+        if (err) {
+          reject(err);
+          return;
+        }
 
-    // Create indexes for performance optimization
-    this._createIndexes();
+        // Create indexes for performance optimization
+        this._createIndexes()
+          .then(resolve)
+          .catch(reject);
+      });
+    });
   }
 
   /**
    * Create database indexes for improved query performance
    * @private
+   * @returns {Promise<void>}
    */
   _createIndexes() {
-    // Index for ORDER BY created_at DESC queries (most common)
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_generated_content_created_at 
-      ON generated_content(created_at DESC)
-    `);
+    return new Promise((resolve, reject) => {
+      const indexes = [
+        // Index for ORDER BY created_at DESC queries (most common)
+        `CREATE INDEX IF NOT EXISTS idx_generated_content_created_at 
+         ON generated_content(created_at DESC)`,
+        
+        // Index for type filtering
+        `CREATE INDEX IF NOT EXISTS idx_generated_content_type 
+         ON generated_content(type)`,
+        
+        // Index for year filtering
+        `CREATE INDEX IF NOT EXISTS idx_generated_content_year 
+         ON generated_content(year)`,
+        
+        // Composite index for combined type and year filtering with chronological ordering
+        `CREATE INDEX IF NOT EXISTS idx_generated_content_type_year_created 
+         ON generated_content(type, year, created_at DESC)`,
+        
+        // Composite index for type filtering with chronological ordering
+        `CREATE INDEX IF NOT EXISTS idx_generated_content_type_created 
+         ON generated_content(type, created_at DESC)`,
+        
+        // Composite index for year filtering with chronological ordering
+        `CREATE INDEX IF NOT EXISTS idx_generated_content_year_created 
+         ON generated_content(year, created_at DESC)`,
+        
+        // Index for updated_at (useful for tracking recent changes)
+        `CREATE INDEX IF NOT EXISTS idx_generated_content_updated_at 
+         ON generated_content(updated_at DESC)`
+      ];
 
-    // Index for type filtering
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_generated_content_type 
-      ON generated_content(type)
-    `);
+      let completed = 0;
+      let hasError = false;
 
-    // Index for year filtering
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_generated_content_year 
-      ON generated_content(year)
-    `);
-
-    // Composite index for combined type and year filtering with chronological ordering
-    // This covers: WHERE type = ? AND year = ? ORDER BY created_at DESC
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_generated_content_type_year_created 
-      ON generated_content(type, year, created_at DESC)
-    `);
-
-    // Composite index for type filtering with chronological ordering
-    // This covers: WHERE type = ? ORDER BY created_at DESC
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_generated_content_type_created 
-      ON generated_content(type, created_at DESC)
-    `);
-
-    // Composite index for year filtering with chronological ordering
-    // This covers: WHERE year = ? ORDER BY created_at DESC
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_generated_content_year_created 
-      ON generated_content(year, created_at DESC)
-    `);
-
-    // Index for updated_at (useful for tracking recent changes)
-    this.db.run(`
-      CREATE INDEX IF NOT EXISTS idx_generated_content_updated_at 
-      ON generated_content(updated_at DESC)
-    `);
+      indexes.forEach(indexSql => {
+        this.db.run(indexSql, (err) => {
+          if (err && !hasError) {
+            hasError = true;
+            reject(err);
+            return;
+          }
+          
+          completed++;
+          if (completed === indexes.length && !hasError) {
+            resolve();
+          }
+        });
+      });
+    });
   }
 
   /**
@@ -270,7 +326,8 @@ class SQLiteService {
    * @param {Object} content - Content to save
    * @returns {Promise<Object>} - Saved content
    */
-  saveGeneratedContent(content) {
+  async saveGeneratedContent(content) {
+    await this._ensureInitialized();
     return new Promise((resolve, reject) => {
       // Ensure content has an ID
       if (!content.id) {
@@ -587,7 +644,8 @@ class SQLiteService {
    * Reset the generated content table
    * @returns {Promise<void>}
    */
-  resetGeneratedContent() {
+  async resetGeneratedContent() {
+    await this._ensureInitialized();
     return new Promise((resolve, reject) => {
       this.db.run('DELETE FROM generated_content', (err) => {
         if (err) {
