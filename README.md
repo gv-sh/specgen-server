@@ -1,6 +1,6 @@
 # SpecGen Server
 
-[![Version](https://img.shields.io/badge/version-0.11.1-blue.svg)](https://github.com/gv-sh/specgen-server)
+[![Version](https://img.shields.io/badge/version-0.13.4-blue.svg)](https://github.com/gv-sh/specgen-server)
 
 A Node.js/Express API for generating speculative fiction stories using AI. Manages fiction categories and their parameters, and provides endpoints for generating content through OpenAI integration.
 
