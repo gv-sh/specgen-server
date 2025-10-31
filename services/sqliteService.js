@@ -92,7 +92,7 @@ class SQLiteService {
    * @returns {Promise<void>}
    */
   restoreGenerationsFromBackup(generations) {
-    return new Promise(async (resolve, reject) => {
+    return new Promise((resolve, reject) => {
       if (!Array.isArray(generations)) {
         reject(new Error('Invalid generations data: must be an array'));
         return;
