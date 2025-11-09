@@ -3,17 +3,20 @@ const axios = require('axios');
 const { Buffer } = require('buffer');
 const settingsService = require('./settingsService');
 
+// Constants
+const MAX_VISUAL_ELEMENTS = 5;
+
 /**
  * Service for interacting with OpenAI API
  */
 class AIService {
   constructor() {
-    this.apiKey = globalThis.process?.env?.OPENAI_API_KEY;
+    this.apiKey = process.env.OPENAI_API_KEY;
     this.baseUrl = 'https://api.openai.com/v1';
     this.chatCompletionUrl = `${this.baseUrl}/chat/completions`;
     this.imageGenerationUrl = `${this.baseUrl}/images/generations`;
-    
-    if (!this.apiKey && globalThis.process?.env?.NODE_ENV !== 'test') {
+
+    if (!this.apiKey && process.env.NODE_ENV !== 'test') {
       console.error('ERROR: OPENAI_API_KEY not set in environment variables');
     }
   }
@@ -439,7 +442,7 @@ class AIService {
       }
     }
     
-    return uniqueElements.slice(0, 5); // Limit to 5 key visual elements
+    return uniqueElements.slice(0, MAX_VISUAL_ELEMENTS);
   }
 
   /**

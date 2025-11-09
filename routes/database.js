@@ -7,6 +7,28 @@ const multer = require('multer');
 const fs = require('fs').promises;
 const upload = multer({ dest: 'uploads/' });
 
+// Empty database structure for reset operations
+const EMPTY_DATABASE = {
+  categories: [],
+  parameters: []
+};
+
+/**
+ * Helper function to handle errors consistently
+ * @param {Object} res - Express response object
+ * @param {Error} error - Error object
+ * @param {String} logMessage - Message to log
+ * @param {String} errorMessage - Error message to send to client
+ */
+function handleError(res, error, logMessage, errorMessage) {
+  console.warn(logMessage, error.message);
+  res.status(500).json({
+    success: false,
+    error: errorMessage,
+    details: process.env.NODE_ENV === 'development' ? error.message : undefined
+  });
+}
+
 /**
  * @swagger
  * /api/database/download:
@@ -38,14 +60,7 @@ router.get('/download', async (req, res) => {
 
     res.json(data);
   } catch (error) {
-    // Use a logging service in production
-    console.warn('Database download error:', error.message);
-    
-    res.status(500).json({
-      success: false,
-      error: 'Failed to download database',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    handleError(res, error, 'Database download error:', 'Failed to download database');
   }
 });
 
@@ -80,14 +95,7 @@ router.get('/generations/download', async (req, res) => {
 
     res.json({ generations });
   } catch (error) {
-    // Use a logging service in production
-    console.warn('Generations database download error:', error.message);
-    
-    res.status(500).json({
-      success: false,
-      error: 'Failed to download generations database',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    handleError(res, error, 'Generations database download error:', 'Failed to download generations database');
   }
 });
 
@@ -174,14 +182,7 @@ router.post('/restore', upload.single('file'), async (req, res) => {
       }
     }
 
-    // Use a logging service in production
-    console.warn('Database restore error:', error.message);
-    
-    res.status(500).json({
-      success: false,
-      error: 'Failed to restore database',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    handleError(res, error, 'Database restore error:', 'Failed to restore database');
   }
 });
 
@@ -267,14 +268,7 @@ router.post('/generations/restore', upload.single('file'), async (req, res) => {
       }
     }
 
-    // Use a logging service in production
-    console.warn('Generations database restore error:', error.message);
-    
-    res.status(500).json({
-      success: false,
-      error: 'Failed to restore generations database',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    handleError(res, error, 'Generations database restore error:', 'Failed to restore generations database');
   }
 });
 
@@ -292,26 +286,14 @@ router.post('/generations/restore', upload.single('file'), async (req, res) => {
  */
 router.post('/reset', async (req, res) => {
   try {
-    const emptyDatabase = {
-      categories: [],
-      parameters: []
-    };
-
-    await databaseService.saveData(emptyDatabase);
+    await databaseService.saveData(EMPTY_DATABASE);
     
     res.json({
       success: true,
       message: 'Database reset successfully'
     });
   } catch (error) {
-    // Use a logging service in production
-    console.warn('Database reset error:', error.message);
-    
-    res.status(500).json({
-      success: false,
-      error: 'Failed to reset database',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    handleError(res, error, 'Database reset error:', 'Failed to reset database');
   }
 });
 
@@ -336,14 +318,7 @@ router.post('/generations/reset', async (req, res) => {
       message: 'Generations database reset successfully'
     });
   } catch (error) {
-    // Use a logging service in production
-    console.warn('Generations database reset error:', error.message);
-    
-    res.status(500).json({
-      success: false,
-      error: 'Failed to reset generations database',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    handleError(res, error, 'Generations database reset error:', 'Failed to reset generations database');
   }
 });
 
@@ -361,14 +336,9 @@ router.post('/generations/reset', async (req, res) => {
  */
 router.post('/reset-all', async (req, res) => {
   try {
-    const emptyDatabase = {
-      categories: [],
-      parameters: []
-    };
-
     // Reset both databases
     await Promise.all([
-      databaseService.saveData(emptyDatabase),
+      databaseService.saveData(EMPTY_DATABASE),
       sqliteService.resetGeneratedContent()
     ]);
     
@@ -377,14 +347,7 @@ router.post('/reset-all', async (req, res) => {
       message: 'All databases reset successfully'
     });
   } catch (error) {
-    // Use a logging service in production
-    console.warn('Database reset-all error:', error.message);
-    
-    res.status(500).json({
-      success: false,
-      error: 'Failed to reset all databases',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    handleError(res, error, 'Database reset-all error:', 'Failed to reset all databases');
   }
 });
 

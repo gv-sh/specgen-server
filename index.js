@@ -6,6 +6,10 @@ const cors = require('cors');
 const errorHandler = require('./middleware/errorHandler');
 const net = require('net');
 
+// Constants
+const DEFAULT_PORT = 3000;
+const MAX_PORT_ATTEMPTS = 10;
+
 // Function to check if a port is available
 function isPortAvailable(port) {
   return new Promise((resolve) => {
@@ -22,15 +26,15 @@ function isPortAvailable(port) {
 }
 
 // Function to find an available port
-async function findAvailablePort(startPort, maxAttempts = 10) {
+async function findAvailablePort(startPort, maxAttempts = MAX_PORT_ATTEMPTS) {
   // In production, use the exact port specified
   if (process.env.NODE_ENV === 'production') {
     return startPort;
   }
-  
-  // In development, find an available port starting from 3000
-  if (startPort < 3000) {
-    startPort = 3000;
+
+  // In development, find an available port starting from default port
+  if (startPort < DEFAULT_PORT) {
+    startPort = DEFAULT_PORT;
   }
   
   for (let port = startPort; port < startPort + maxAttempts; port++) {
@@ -43,7 +47,7 @@ async function findAvailablePort(startPort, maxAttempts = 10) {
 
 // Initialize Express app
 const app = express();
-let PORT = process.env.PORT || 3000;
+let PORT = process.env.PORT || DEFAULT_PORT;
 
 // Middleware
 app.use(cors());

@@ -1,5 +1,4 @@
 // services/settingsService.js
-/* eslint-disable no-unused-vars */
 const fs = require('fs').promises;
 const path = require('path');
 

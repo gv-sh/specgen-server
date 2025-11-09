@@ -1,11 +1,6 @@
 // swagger.js
 const swaggerJsdoc = require('swagger-jsdoc');
 
-// Process environment handling for browser compatibility
-if (typeof process === 'undefined') {
-  var process = { env: { PORT: '3000' } };
-}
-
 // Helper function to ensure URL has proper port if needed
 function getServerUrl() {
   if (process.env.API_URL) {
