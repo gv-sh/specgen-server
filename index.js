@@ -122,7 +122,7 @@ app.use('/api/health', healthRoutes);
 app.use(errorHandler);
 
 // Check if this file is being run directly
-const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+const isMainModule = fileURLToPath(import.meta.url) === process.argv[1];
 
 if (isMainModule) {
   (async () => {

@@ -1,4 +1,5 @@
 /* global describe, test, expect, beforeAll, jest */
+import { jest } from '@jest/globals';
 import { Buffer } from 'buffer';
 import { request, initDatabase } from './setup.js';
 import databaseService from '../services/databaseService.js';
@@ -8,7 +9,8 @@ import sqliteService from '../services/sqliteService.js';
 const mockImageData = Buffer.from('test-image-data');
 
 // Mock the AI service response
-jest.mock('../services/aiService', () => ({
+jest.mock('../services/aiService.js', () => ({
+  default: {
   generateContent: jest.fn().mockImplementation(async (parameters, type) => {
     if (type === 'fiction') {
       return {
@@ -31,6 +33,7 @@ jest.mock('../services/aiService', () => ({
     }
     return { success: false, error: "Unsupported content type" };
   })
+  }
 }));
 
 describe('Generated Content API Tests', () => {

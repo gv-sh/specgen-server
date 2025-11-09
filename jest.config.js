@@ -9,5 +9,6 @@ export default {
   transformIgnorePatterns: [
     'node_modules/(?!(swagger-jsdoc|swagger-ui-express)/)'
   ],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   verbose: true
 };

@@ -2,11 +2,13 @@
 import express from 'express';
 const router = express.Router();
 import os from 'os';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const { version } = require('../package.json');
+import fs from 'fs';
 import sqliteService from '../services/sqliteService.js';
 import databaseService from '../services/databaseService.js';
+
+// Read package.json to get version
+const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+const { version } = packageJson;
 
 /**
  * @swagger

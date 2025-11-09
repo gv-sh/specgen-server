@@ -285,9 +285,9 @@ jobs:
         
         # Run load test with timeout (note: timeout command may not be available on all systems)
         if command -v timeout >/dev/null 2>&1; then
-          timeout 180 node tests/performance/load-test.js || echo "Load test completed or timed out"
+          timeout 180 node tests/performance/loadTest.js || echo "Load test completed or timed out"
         else
-          node tests/performance/load-test.js || echo "Load test completed"
+          node tests/performance/loadTest.js || echo "Load test completed"
         fi
         
         # Stop server

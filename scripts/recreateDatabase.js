@@ -1,6 +1,7 @@
 // recreateDatabase.js
 import fs from 'fs/promises';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 /**
  * Script to delete existing SQLite database files so they can be recreated with the updated schema
@@ -36,7 +37,7 @@ async function recreateDatabases() {
 }
 
 // Run the function if this script is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
     recreateDatabases().catch(error => {
         console.error('Error in recreateDatabase script:', error);
         process.exit(1);

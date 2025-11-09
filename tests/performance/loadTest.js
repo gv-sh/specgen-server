@@ -1,6 +1,7 @@
-// tests/performance/load-test.js
+// tests/performance/loadTest.js
 import axios from 'axios';
 import { performance } from 'perf_hooks';
+import { fileURLToPath } from 'url';
 
 // Load test configuration
 const LOAD_TEST_CONFIG = {
@@ -389,6 +390,6 @@ async function runLoadTest() {
 export { LoadTester, LOAD_TEST_CONFIG, runLoadTest };
 
 // Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   runLoadTest();
 }

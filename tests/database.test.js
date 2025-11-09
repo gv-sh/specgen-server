@@ -1,5 +1,5 @@
 /* global describe, test, expect, beforeEach, beforeAll, jest */
-
+import { jest } from '@jest/globals';
 import { request, cleanDatabase, initDatabase } from './setup.js';
 import fs from 'fs/promises';
 import path from 'path';
@@ -7,16 +7,20 @@ import databaseService from '../services/databaseService.js';
 import sqliteService from '../services/sqliteService.js';
 
 // Correct way to mock the entire module
-jest.mock('../services/databaseService', () => ({
-  getData: jest.fn(),
-  saveData: jest.fn()
+jest.mock('../services/databaseService.js', () => ({
+  default: {
+    getData: jest.fn(),
+    saveData: jest.fn()
+  }
 }));
 
 // Mock the SQLite service
-jest.mock('../services/sqliteService', () => ({
-  getAllGenerationsForBackup: jest.fn(),
-  restoreGenerationsFromBackup: jest.fn(),
-  resetGeneratedContent: jest.fn()
+jest.mock('../services/sqliteService.js', () => ({
+  default: {
+    getAllGenerationsForBackup: jest.fn(),
+    restoreGenerationsFromBackup: jest.fn(),
+    resetGeneratedContent: jest.fn()
+  }
 }));
 
 describe('Database API Tests', () => {

@@ -1,4 +1,4 @@
-// tests/performance-indexing.test.js
+// tests/performanceIndexing.test.js
 import sqliteService from '../services/sqliteService.js';
 
 describe('Database Indexing Performance Tests', () => {

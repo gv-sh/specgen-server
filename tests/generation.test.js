@@ -1,12 +1,13 @@
 /* global describe, test, expect, beforeAll, jest */
-
+import { jest } from '@jest/globals';
 import { Buffer } from 'buffer';
 import { request, createTestCategory, createTestParameters, cleanDatabase, initDatabase } from './setup.js';
 
 const mockImageData = Buffer.from('test-image-data');
 
 // Mock the AI service to avoid actual API calls and test the new sequential behavior
-jest.mock('../services/aiService', () => ({
+jest.mock('../services/aiService.js', () => ({
+  default: {
   generateContent: jest.fn().mockImplementation(async (parameters, type, year, providedTitle) => {
     // Create a response object based on content type
     let response;
@@ -134,6 +135,7 @@ jest.mock('../services/aiService', () => ({
       }
     };
   })
+  }
 }));
 
 describe('Generation API Tests with Sequential Text-Image Generation', () => {

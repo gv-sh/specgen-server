@@ -1,4 +1,5 @@
 // scripts/initTestData.js
+import { fileURLToPath } from 'url';
 import databaseService from '../services/databaseService.js';
 
 /**
@@ -362,7 +363,7 @@ async function createSampleContent() {
 export { initializeTestData, resetDatabase };
 
 // Run the initialization if this is the main module
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   initializeTestData()
     .then(() => {
       console.log('Initialization complete. You can now use Swagger UI to test the API.');
