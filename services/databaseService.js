@@ -7,8 +7,7 @@ const sqliteService = require('./sqliteService');
 // Use test database in development mode
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const DATABASE_PATH = path.resolve(
-  // eslint-disable-next-line no-undef
-  __dirname, 
+  __dirname,
   `../data/${isDevelopment ? 'test-database.json' : 'database.json'}`
 );
 

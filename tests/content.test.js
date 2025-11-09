@@ -1,5 +1,4 @@
 /* global describe, test, expect, beforeAll, jest */
-/* eslint-disable no-unused-vars */
 const { Buffer } = require('buffer');
 const { request, initDatabase } = require('./setup');
 const databaseService = require('../services/databaseService');

@@ -11,7 +11,7 @@ const settingsService = require('../services/settingsService');
  */
 function validateParameterValue(parameter, value) {
   // For testing environment, we can be more permissive
-  if (globalThis.process?.env?.NODE_ENV === 'test') {
+  if (process.env.NODE_ENV === 'test') {
     return null;
   }
 
@@ -140,9 +140,9 @@ const generateController = {
 
       // Initialize filteredParameters regardless of test mode
       const filteredParameters = {};
-      
+
       // In test mode, simply copy parameters without validation
-      if (globalThis.process?.env?.NODE_ENV === 'test') {
+      if (process.env.NODE_ENV === 'test') {
         // For test environment, just use the original parameters
         Object.assign(filteredParameters, parameterValues);
       } else {

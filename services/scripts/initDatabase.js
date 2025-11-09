@@ -1,7 +1,6 @@
 const fs = require('fs-extra');
 const path = require('path');
 
-// eslint-disable-next-line no-undef
 const DATABASE_PATH = path.join(__dirname, '../data/database.json');
 
 // Convert name to a slug suitable for use as an ID

@@ -1,5 +1,6 @@
 // eslint.config.js
 const js = require('@eslint/js');
+const globals = require('globals');
 
 module.exports = [
   js.configs.recommended,
@@ -8,19 +9,8 @@ module.exports = [
       ecmaVersion: 2022,
       sourceType: 'commonjs',
       globals: {
-        node: true,
-        es6: true,
-        jest: true,
-        console: 'readonly',
-        process: 'readonly',
-        require: 'readonly',
-        module: 'readonly',
-        exports: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        global: 'readonly',
-        globalThis: 'readonly',
-        Buffer: 'readonly'
+        ...globals.node,
+        ...globals.jest
       }
     },
     rules: {
@@ -28,8 +18,7 @@ module.exports = [
       'no-console': 'off',
       'semi': 'off',
       'quotes': 'off',
-      'no-redeclare': 'off',
-      'no-undef': 'off'
+      'no-redeclare': 'off'
     },
     ignores: [
       'node_modules/**',
