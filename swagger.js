@@ -1,5 +1,5 @@
 // swagger.js
-const swaggerJsdoc = require('swagger-jsdoc');
+import swaggerJsdoc from 'swagger-jsdoc';
 
 // Helper function to ensure URL has proper port if needed
 function getServerUrl() {
@@ -199,4 +199,4 @@ const options = {
   apis: ['./routes/*.js'], // Path to the API routes
 };
 
-module.exports = swaggerJsdoc(options);
+export default swaggerJsdoc(options);

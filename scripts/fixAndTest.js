@@ -1,5 +1,5 @@
 // fixAndTest.js
-const { spawn } = require('child_process');
+import { spawn } from 'child_process';
 
 /**
  * Runs a script using NPM and returns a promise

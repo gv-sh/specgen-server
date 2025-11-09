@@ -1,7 +1,7 @@
 // routes/content.js
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const contentController = require('../controllers/contentController');
+import contentController from '../controllers/contentController.js';
 
 /**
  * @swagger
@@ -462,4 +462,4 @@ router.put('/:id', contentController.updateContent);
  */
 router.delete('/:id', contentController.deleteContent);
 
-module.exports = router;
+export default router;

@@ -200,7 +200,7 @@ main() {
     
     # 1. Content loading performance tests
     if ! run_performance_test "content_performance" \
-        "cd '$PROJECT_ROOT' && npm test tests/performance/content.performance.test.js" \
+        "cd '$PROJECT_ROOT' && npm test tests/performance/contentPerformance.test.js" \
         "300"; then
         log "${YELLOW}⚠ Content performance tests had issues but continuing...${NC}"
         # Don't set exit_code=1 for performance tests, as they might have timing variations
@@ -208,7 +208,7 @@ main() {
     
     # 2. Database indexing performance tests
     if ! run_performance_test "database_indexing" \
-        "cd '$PROJECT_ROOT' && npm test tests/performance-indexing.test.js" \
+        "cd '$PROJECT_ROOT' && npm test tests/performanceIndexing.test.js" \
         "120"; then
         # Database indexing failure is warning, not critical
         log "${YELLOW}⚠ Database indexing tests failed but continuing...${NC}"
@@ -217,7 +217,7 @@ main() {
     # 3. Load testing (if server supports it)
     if check_server; then
         if ! run_performance_test "load_testing" \
-            "cd '$PROJECT_ROOT' && timeout 60 node tests/performance/load-test.js" \
+            "cd '$PROJECT_ROOT' && timeout 60 node tests/performance/loadTest.js" \
             "90"; then
             # Load test failure is warning, not critical
             log "${YELLOW}⚠ Load testing failed but continuing...${NC}"

@@ -1,4 +1,4 @@
-// tests/performance/memory-monitor.js
+// tests/performance/memoryMonitor.js
 
 /**
  * Memory monitoring utility for performance tests
@@ -333,7 +333,7 @@ function expectMemoryUsage(monitor, requestCount) {
   return benchmarks;
 }
 
-module.exports = {
+export {
   MemoryMonitor,
   monitorMemoryDuring,
   expectMemoryUsage

@@ -1,5 +1,5 @@
 // runTests.js
-const { spawn } = require('child_process');
+import { spawn } from 'child_process';
 
 // Run the tests
 function runTests() {

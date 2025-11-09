@@ -1,13 +1,23 @@
-/* global beforeAll, afterAll, jest */
+/* global beforeAll, afterAll */
+import { jest } from '@jest/globals';
 
-jest.mock('../swagger');
-const app = require('../index');
-const supertest = require('supertest');
-const path = require('path');
-const fs = require('fs').promises;
+// Make jest available globally for all tests
+global.jest = jest;
+
+jest.mock('../swagger.js');
+import app from '../index.js';
+import supertest from 'supertest';
+import path from 'path';
+import fs from 'fs/promises';
 
 // Create a supertest instance with our app
 const request = supertest(app);
+
+// Get __dirname equivalent in ES modules
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Database file paths
 const DATABASE_PATH = path.join(__dirname, '../data/database.json');
@@ -224,7 +234,7 @@ afterAll(async () => {
   await cleanDatabase();
 });
 
-module.exports = {
+export {
   request,
   createTestCategory,
   cleanDatabase,

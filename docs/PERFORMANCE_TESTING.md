@@ -29,7 +29,7 @@ This document describes the comprehensive performance testing infrastructure imp
 
 ## Test Suite Structure
 
-### 1. Content Performance Tests (`tests/performance/content.performance.test.js`)
+### 1. Content Performance Tests (`tests/performance/contentPerformance.test.js`)
 
 Comprehensive endpoint testing with realistic data sets:
 
@@ -47,7 +47,7 @@ types = ['fiction', 'image', 'combined'];
 - Performance regression detection
 - Memory usage monitoring
 
-### 2. Load Testing (`tests/performance/load-test.js`)
+### 2. Load Testing (`tests/performance/loadTest.js`)
 
 Simulates real-world concurrent user load:
 
@@ -63,7 +63,7 @@ RAMP_UP_TIME: 5000ms (5 seconds)
 - 20% - Filtered content (`/api/content?type=fiction&limit=15`)
 - 10% - Metadata requests (`/api/content/years`)
 
-### 3. Memory Monitoring (`tests/performance/memory-monitor.js`)
+### 3. Memory Monitoring (`tests/performance/memoryMonitor.js`)
 
 Real-time memory tracking with statistical analysis:
 
@@ -115,10 +115,10 @@ if (increase > 20) {
 npm test tests/performance/
 
 # Run specific performance test
-npm test tests/performance/content.performance.test.js
+npm test tests/performance/contentPerformance.test.js
 
 # Run load testing
-node tests/performance/load-test.js
+node tests/performance/loadTest.js
 
 # Run with CI automation script
 chmod +x scripts/run-performance-tests.sh

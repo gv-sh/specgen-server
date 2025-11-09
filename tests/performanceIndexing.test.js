@@ -1,5 +1,5 @@
-// tests/performance-indexing.test.js
-const sqliteService = require('../services/sqliteService');
+// tests/performanceIndexing.test.js
+import sqliteService from '../services/sqliteService.js';
 
 describe('Database Indexing Performance Tests', () => {
   let testData = [];

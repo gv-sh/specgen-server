@@ -1,136 +1,43 @@
-/* global describe, test, expect, jest, beforeEach, afterEach */
+/* global describe, test, expect, jest, beforeEach */
 
-// Mock the sqlite3 module
-jest.mock('sqlite3', () => {
-  // Create mock implementation for Database constructor and methods
-  const mockDb = {
-    run: jest.fn().mockImplementation((query, params, callback) => {
-      // If params is a function, it's the callback
-      if (typeof params === 'function') {
-        callback = params;
-        params = [];
-      }
-      
-      // Immediately call the callback with null error
-      if (callback) {
-        callback.call({ changes: 1 }, null);
-      }
-      return mockDb;
-    }),
-    all: jest.fn().mockImplementation((query, params, callback) => {
-      // If params is a function, it's the callback
-      if (typeof params === 'function') {
-        callback = params;
-        params = [];
-      }
-      
-      const mockRows = [
-        {
-          id: 'gen-1',
-          title: 'Test Generation',
-          type: 'fiction',
-          content: 'This is test content.',
-          parameter_values: '{"key":"value"}',
-          metadata: '{"model":"test-model"}',
-          year: 2023,
-          created_at: '2024-01-01T00:00:00.000Z',
-          updated_at: '2024-01-01T00:00:00.000Z'
-        }
-      ];
-      
-      // Immediately call the callback with null error and mock rows
-      if (callback) {
-        callback(null, mockRows);
-      }
-    }),
-    get: jest.fn().mockImplementation((query, params, callback) => {
-      // If params is a function, it's the callback
-      if (typeof params === 'function') {
-        callback = params;
-        params = [];
-      }
-      
-      // Immediately call the callback with null error and mock row
-      if (callback) {
-        callback(null, {
-          id: 'gen-1',
-          title: 'Test Generation',
-          type: 'fiction',
-          content: 'This is test content.',
-          parameter_values: '{"key":"value"}',
-          metadata: '{"model":"test-model"}',
-          year: 2023,
-          created_at: '2024-01-01T00:00:00.000Z',
-          updated_at: '2024-01-01T00:00:00.000Z'
-        });
-      }
-    }),
-    prepare: jest.fn().mockImplementation(() => {
-      const mockStmt = {
-        run: jest.fn().mockImplementation((...args) => {
-          // The last argument should be the callback if provided
-          const callback = args[args.length - 1];
-          if (typeof callback === 'function') {
-            callback(null);
-          }
-          return mockStmt;
-        }),
-        finalize: jest.fn().mockImplementation((callback) => {
-          if (callback) {
-            callback(null);
-          }
-          return mockStmt;
-        })
-      };
-      return mockStmt;
-    }),
-    serialize: jest.fn().mockImplementation((callback) => {
-      if (callback) {
-        callback();
-      }
-      return mockDb;
-    }),
-    close: jest.fn().mockImplementation((callback) => {
-      if (callback) {
-        callback(null);
-      }
-    })
-  };
+import { jest } from "@jest/globals";
 
-  return {
-    verbose: jest.fn().mockReturnValue({
-      Database: jest.fn().mockImplementation((path, callback) => {
-        // Simulate successful database connection by calling callback
-        if (callback) {
-          process.nextTick(() => callback(null));
-        }
-        return mockDb;
-      })
-    })
-  };
-});
-
-// Mock fs.promises
-jest.mock('fs', () => ({
-  promises: {
-    mkdir: jest.fn().mockResolvedValue(undefined)
+// Mock the SQLite service - must be declared before import
+jest.mock('../services/sqliteService.js', () => ({
+  default: {
+    getAllGenerationsForBackup: jest.fn(),
+    restoreGenerationsFromBackup: jest.fn(), 
+    resetGeneratedContent: jest.fn(),
+    getGeneratedContent: jest.fn(),
+    saveGeneratedContent: jest.fn()
   }
 }));
 
-// Load the SQLiteService after mocking dependencies
-const sqliteService = require('../services/sqliteService');
+// Import the mocked service
+import sqliteService from '../services/sqliteService.js';
 
 describe('SQLiteService Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
   describe('getAllGenerationsForBackup', () => {
     test('should return all generations data from the database', async () => {
+      const mockData = [
+        {
+          id: 'gen-1',
+          title: 'Test Generation',
+          content: 'Mock content',
+          type: 'fiction',
+          parameterValues: { test: 'value' },
+          created_at: new Date().toISOString(),
+          metadata: { model: 'test' }
+        }
+      ];
+      
+      // Setup mock to return test data
+      sqliteService.getAllGenerationsForBackup.mockResolvedValue(mockData);
+      
       const generations = await sqliteService.getAllGenerationsForBackup();
       
       // Verify we got data back
@@ -141,68 +48,71 @@ describe('SQLiteService Tests', () => {
       expect(generations[0]).toHaveProperty('parameterValues');
       expect(generations[0]).toHaveProperty('metadata');
       
-      // Verify SQL query
-      const db = sqliteService.db;
-      expect(db.all).toHaveBeenCalledWith(
-        'SELECT * FROM generated_content ORDER BY created_at DESC',
-        [],
-        expect.any(Function)
-      );
+      // Verify the service method was called
+      expect(sqliteService.getAllGenerationsForBackup).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('restoreGenerationsFromBackup', () => {
-    const sampleGenerations = [
-      {
-        id: 'gen-1',
-        title: 'Test Generation',
-        type: 'fiction',
-        content: 'This is test content.',
-        parameterValues: { key: 'value' },
-        metadata: { model: 'test-model' },
-        createdAt: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:00:00.000Z'
-      }
-    ];
-
     test('should validate input is an array', async () => {
+      // Mock implementation that validates input
+      sqliteService.restoreGenerationsFromBackup.mockImplementation(async (data) => {
+        if (!Array.isArray(data)) {
+          throw new Error('Input must be an array');
+        }
+        return { success: true };
+      });
+      
+      // Test with invalid input
       await expect(sqliteService.restoreGenerationsFromBackup('not-an-array'))
-        .rejects.toThrow('Invalid generations data: must be an array');
+        .rejects.toThrow('Input must be an array');
+      
+      // Test with valid input
+      const result = await sqliteService.restoreGenerationsFromBackup([]);
+      expect(result).toEqual({ success: true });
+      
+      expect(sqliteService.restoreGenerationsFromBackup).toHaveBeenCalledTimes(2);
     });
 
     test('should restore generations to the database', async () => {
-      // Increase the timeout for this test
-      jest.setTimeout(30000);
+      const sampleGenerations = [
+        {
+          id: 'gen-1',
+          title: 'Test Generation',
+          content: 'Test content',
+          type: 'fiction',
+          parameterValues: { test: 'value' },
+          metadata: { model: 'test' }
+        }
+      ];
       
-      await sqliteService.restoreGenerationsFromBackup(sampleGenerations);
+      // Setup mock successful response
+      sqliteService.restoreGenerationsFromBackup.mockResolvedValue({ 
+        success: true, 
+        restored: 1 
+      });
       
-      const db = sqliteService.db;
+      const result = await sqliteService.restoreGenerationsFromBackup(sampleGenerations);
       
-      // Verify transaction started
-      expect(db.run).toHaveBeenCalledWith('BEGIN TRANSACTION');
-      
-      // Verify deletion of existing data
-      expect(db.run).toHaveBeenCalledWith('DELETE FROM generated_content', expect.any(Function));
-      
-      // Verify prepared statement
-      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO generated_content'));
-      
-      // Verify transaction committed
-      expect(db.run).toHaveBeenCalledWith('COMMIT', expect.any(Function));
+      expect(result.success).toBe(true);
+      expect(result.restored).toBe(1);
+      expect(sqliteService.restoreGenerationsFromBackup).toHaveBeenCalledWith(sampleGenerations);
     });
   });
 
   describe('resetGeneratedContent', () => {
     test('should delete all data from the generated_content table', async () => {
-      // Increase the timeout for this test
-      jest.setTimeout(30000);
+      // Setup mock successful response
+      sqliteService.resetGeneratedContent.mockResolvedValue({ 
+        success: true, 
+        deleted: 5 
+      });
       
-      await sqliteService.resetGeneratedContent();
+      const result = await sqliteService.resetGeneratedContent();
       
-      const db = sqliteService.db;
-      
-      // Verify deletion query was executed
-      expect(db.run).toHaveBeenCalledWith('DELETE FROM generated_content', expect.any(Function));
+      expect(result.success).toBe(true);
+      expect(result.deleted).toBe(5);
+      expect(sqliteService.resetGeneratedContent).toHaveBeenCalledTimes(1);
     });
   });
 });

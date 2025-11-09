@@ -1,10 +1,10 @@
 /* global process */
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const databaseService = require('../services/databaseService');
-const sqliteService = require('../services/sqliteService');
-const multer = require('multer');
-const fs = require('fs').promises;
+import databaseService from '../services/databaseService.js';
+import sqliteService from '../services/sqliteService.js';
+import multer from 'multer';
+import fs from 'fs/promises';
 const upload = multer({ dest: 'uploads/' });
 
 // Empty database structure for reset operations
@@ -351,4 +351,4 @@ router.post('/reset-all', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

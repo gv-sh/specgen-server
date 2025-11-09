@@ -1,20 +1,22 @@
 /* global describe, test, expect */
+import { jest } from '@jest/globals';
 
 /**
  * Unit tests for visual element extraction from story text
  * These tests verify the new sequential generation logic
  */
 
+// Mock the dependencies but not the main class
+jest.mock('axios');
+jest.mock('../services/settingsService.js');
+
+import axios from 'axios';
+import { Buffer } from 'buffer';
+import settingsService from '../services/settingsService.js';
+
 describe('Visual Element Extraction Tests', () => {
   // Since we're testing the actual implementation, we need to create a real instance
   // instead of using the mocked version
-  const axios = require('axios');
-  const { Buffer } = require('buffer');
-  const settingsService = require('../services/settingsService');
-
-  // Mock the dependencies but not the main class
-  jest.mock('axios');
-  jest.mock('../services/settingsService');
 
   // Create a test instance of AIService without the full module mock
   class TestAIService {

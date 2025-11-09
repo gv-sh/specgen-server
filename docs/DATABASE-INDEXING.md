@@ -239,7 +239,7 @@ Comprehensive performance tests validate the indexing implementation:
 
 Run performance tests:
 ```bash
-npm test tests/performance-indexing.test.js
+npm test tests/performanceIndexing.test.js
 ```
 
 The indexing implementation successfully meets the 50%+ performance improvement target while maintaining full backward compatibility and providing a foundation for future scalability.

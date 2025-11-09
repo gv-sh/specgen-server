@@ -1,8 +1,8 @@
-// tests/performance/content.performance.test.js
-const { Buffer } = require('buffer');
-const { request, initDatabase } = require('../setup');
-const sqliteService = require('../../services/sqliteService');
-const { MemoryMonitor, expectMemoryUsage } = require('./memory-monitor');
+// tests/performance/contentPerformance.test.js
+import { Buffer } from 'buffer';
+import { request, initDatabase } from '../setup.js';
+import sqliteService from '../../services/sqliteService.js';
+import { MemoryMonitor, expectMemoryUsage } from './memoryMonitor.js';
 
 // Performance benchmarks from issue requirements
 const PERFORMANCE_BENCHMARKS = {

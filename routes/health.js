@@ -1,10 +1,14 @@
 // routes/health.js
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const os = require('os');
-const { version } = require('../package.json');
-const sqliteService = require('../services/sqliteService');
-const databaseService = require('../services/databaseService');
+import os from 'os';
+import fs from 'fs';
+import sqliteService from '../services/sqliteService.js';
+import databaseService from '../services/databaseService.js';
+
+// Read package.json to get version
+const packageJson = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+const { version } = packageJson;
 
 /**
  * @swagger
@@ -165,4 +169,4 @@ router.get('/ping', (req, res) => {
   res.status(200).json({ message: 'pong' });
 });
 
-module.exports = router;
+export default router;

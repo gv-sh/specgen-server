@@ -9,12 +9,13 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { createRequire } from 'module';
 import swaggerSpec from '../swagger.js';
 
-const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Read package.json to get version
+const packageJson = JSON.parse(await fs.readFile(new URL('../package.json', import.meta.url), 'utf-8'));
 
 const OUTPUT_DIR = path.join(__dirname, '../');
 const OUTPUT_FILE = path.join(OUTPUT_DIR, 'api-spec.json');
@@ -29,7 +30,7 @@ async function generateApiSpec() {
       ...swaggerSpec,
       _meta: {
         generatedAt: new Date().toISOString(),
-        version: process.env.npm_package_version || require('../package.json').version
+        version: process.env.npm_package_version || packageJson.version
       }
     };
 

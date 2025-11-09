@@ -1,8 +1,8 @@
 // routes/settings.js
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const settingsController = require('../controllers/settingsController');
-const validateSettings = require('../middleware/validateSettings');
+import settingsController from '../controllers/settingsController.js';
+import validateSettings from '../middleware/validateSettings.js';
 
 /**
  * @swagger
@@ -165,4 +165,4 @@ router.put('/', validateSettings, settingsController.updateSettings);
  */
 router.post('/reset', settingsController.resetSettings);
 
-module.exports = router;
+export default router;

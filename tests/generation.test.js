@@ -1,12 +1,13 @@
 /* global describe, test, expect, beforeAll, jest */
-
-const { Buffer } = require('buffer');
-const { request, createTestCategory, createTestParameters, cleanDatabase, initDatabase } = require('./setup');
+import { jest } from '@jest/globals';
+import { Buffer } from 'buffer';
+import { request, createTestCategory, createTestParameters, cleanDatabase, initDatabase } from './setup.js';
 
 const mockImageData = Buffer.from('test-image-data');
 
 // Mock the AI service to avoid actual API calls and test the new sequential behavior
-jest.mock('../services/aiService', () => ({
+jest.mock('../services/aiService.js', () => ({
+  default: {
   generateContent: jest.fn().mockImplementation(async (parameters, type, year, providedTitle) => {
     // Create a response object based on content type
     let response;
@@ -134,6 +135,7 @@ jest.mock('../services/aiService', () => ({
       }
     };
   })
+  }
 }));
 
 describe('Generation API Tests with Sequential Text-Image Generation', () => {
@@ -162,7 +164,7 @@ describe('Generation API Tests with Sequential Text-Image Generation', () => {
 
   test('POST /api/generate - Should generate combined content with sequential text-to-image generation', async () => {
     // Get reference to the mocked functions
-    const aiService = require('../services/aiService');
+    const aiService = await import('../services/aiService.js');
     
     const requestPayload = {
       parameterValues: {
@@ -205,7 +207,7 @@ describe('Generation API Tests with Sequential Text-Image Generation', () => {
   });
 
   test('Individual generateImage method should accept generated text parameter', async () => {
-    const aiService = require('../services/aiService');
+    const aiService = await import('../services/aiService.js');
     
     // Test the generateImage method directly with generated text
     const testParameters = { [category.id]: { [parameters.dropdown.id]: "Advanced" } };
@@ -223,7 +225,7 @@ describe('Generation API Tests with Sequential Text-Image Generation', () => {
   });
 
   test('Individual generateCombined method should follow sequential pattern', async () => {
-    const aiService = require('../services/aiService');
+    const aiService = await import('../services/aiService.js');
     
     // Test the generateCombined method directly
     const testParameters = { [category.id]: { [parameters.dropdown.id]: "Advanced" } };
@@ -263,8 +265,9 @@ describe('Generation API Tests with Sequential Text-Image Generation', () => {
 
   test('POST /api/generate - Should generate content with title parameter', async () => {
     // Override the mock for this specific test to return the provided title
-    const originalMock = require('../services/aiService').generateContent;
-    require('../services/aiService').generateContent.mockImplementationOnce(
+    const aiServiceModule = await import('../services/aiService.js');
+    const originalMock = aiServiceModule.generateContent;
+    aiServiceModule.generateContent.mockImplementationOnce(
       async (parameters, type) => ({
         success: true,
         content: "This is a test story with mocked content.",
@@ -290,9 +293,9 @@ describe('Generation API Tests with Sequential Text-Image Generation', () => {
     expect(response.body).toHaveProperty('success', true);
     expect(response.body).toHaveProperty('content');
     expect(response.body).toHaveProperty('title', "Custom Test Title");
-    
+
     // Restore the original mock for other tests
-    require('../services/aiService').generateContent = originalMock;
+    aiServiceModule.generateContent = originalMock;
   });
   
   test('POST /api/generate - Should generate content with toggle parameter and use default title', async () => {
@@ -423,8 +426,9 @@ describe('Generation API Tests with Sequential Text-Image Generation', () => {
 
   test('POST /api/generate - Should generate fiction content with both year and title', async () => {
     // Override the mock for this specific test
-    const originalMock = require('../services/aiService').generateContent;
-    require('../services/aiService').generateContent.mockImplementationOnce(
+    const aiServiceModule = await import('../services/aiService.js');
+    const originalMock = aiServiceModule.generateContent;
+    aiServiceModule.generateContent.mockImplementationOnce(
       async (parameters, type, year) => ({
         success: true,
         content: "This is a test story with mocked content.",
@@ -457,15 +461,16 @@ describe('Generation API Tests with Sequential Text-Image Generation', () => {
     expect(response.body).toHaveProperty('year', 2095);
     expect(response.body).toHaveProperty('title', "My Custom Fiction Story");
     expect(response.body).not.toHaveProperty('imageData');
-    
+
     // Restore the original mock
-    require('../services/aiService').generateContent = originalMock;
+    aiServiceModule.generateContent = originalMock;
   });
 
   test('POST /api/generate - Should generate image content with title and year', async () => {
     // Override the mock for this specific test
-    const originalMock = require('../services/aiService').generateContent;
-    require('../services/aiService').generateContent.mockImplementationOnce(
+    const aiServiceModule = await import('../services/aiService.js');
+    const originalMock = aiServiceModule.generateContent;
+    aiServiceModule.generateContent.mockImplementationOnce(
       async (parameters, type, year) => ({
         success: true,
         imageData: mockImageData,
@@ -499,9 +504,9 @@ describe('Generation API Tests with Sequential Text-Image Generation', () => {
     expect(response.body).toHaveProperty('title', "My Custom Test Image");
     expect(response.body).not.toHaveProperty('content');
     expect(response.body.metadata).toHaveProperty('prompt');
-    
+
     // Restore the original mock
-    require('../services/aiService').generateContent = originalMock;
+    aiServiceModule.generateContent = originalMock;
   });
 
   test('POST /api/generate - Should reject invalid content type', async () => {
@@ -526,7 +531,7 @@ describe('Generation API Tests with Sequential Text-Image Generation', () => {
   });
 
   test('Visual element extraction should work for complex text', async () => {
-    const aiService = require('../services/aiService');
+    const aiService = await import('../services/aiService.js');
     
     // Mock up text that contains various visual elements
     const complexText = `**Title: The Crystal Chambers**

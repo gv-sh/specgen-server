@@ -1,6 +1,6 @@
 // services/settingsService.js
-const fs = require('fs').promises;
-const path = require('path');
+import fs from 'fs/promises';
+import path from 'path';
 
 // Settings file path
 // Construct paths manually without __filename
@@ -171,4 +171,4 @@ class SettingsService {
   }
 }
 
-module.exports = new SettingsService();
+export default new SettingsService();

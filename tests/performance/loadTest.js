@@ -1,6 +1,7 @@
-// tests/performance/load-test.js
-const axios = require('axios');
-const { performance } = require('perf_hooks');
+// tests/performance/loadTest.js
+import axios from 'axios';
+import { performance } from 'perf_hooks';
+import { fileURLToPath } from 'url';
 
 // Load test configuration
 const LOAD_TEST_CONFIG = {
@@ -386,9 +387,9 @@ async function runLoadTest() {
 }
 
 // Export for use in tests
-module.exports = { LoadTester, LOAD_TEST_CONFIG, runLoadTest };
+export { LoadTester, LOAD_TEST_CONFIG, runLoadTest };
 
 // Run if called directly
-if (require.main === module) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   runLoadTest();
 }

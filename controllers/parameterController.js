@@ -1,5 +1,5 @@
 // controllers/parameterController.js
-const databaseService = require('../services/databaseService');
+import databaseService from '../services/databaseService.js';
 
 /**
  * Controller for parameter operations
@@ -267,4 +267,4 @@ const parameterController = {
   }
 };
 
-module.exports = parameterController;
+export default parameterController;

@@ -1,7 +1,7 @@
 // routes/parameters.js
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const parameterController = require('../controllers/parameterController');
+import parameterController from '../controllers/parameterController.js';
 
 /**
  * @swagger
@@ -349,4 +349,4 @@ router.put('/:id', parameterController.updateParameter);
  */
 router.delete('/:id', parameterController.deleteParameter);
 
-module.exports = router;
+export default router;

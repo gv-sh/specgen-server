@@ -1,13 +1,15 @@
 /* global describe, test, expect, beforeAll, beforeEach, jest */
-
-const { request, cleanDatabase, initDatabase } = require('./setup');
-const settingsService = require('../services/settingsService');
+import { jest } from '@jest/globals';
+import { request, cleanDatabase, initDatabase } from './setup.js';
+import settingsService from '../services/settingsService.js';
 
 // Mock the settings service
-jest.mock('../services/settingsService', () => ({
-  getSettings: jest.fn(),
-  updateSettings: jest.fn(),
-  getSetting: jest.fn()
+jest.mock('../services/settingsService.js', () => ({
+  default: {
+    getSettings: jest.fn(),
+    updateSettings: jest.fn(),
+    getSetting: jest.fn()
+  }
 }));
 
 const DEFAULT_SETTINGS = {

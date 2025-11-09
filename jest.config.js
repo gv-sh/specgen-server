@@ -1,24 +1,14 @@
 // jest.config.js
-module.exports = {
+export default {
   testEnvironment: 'node',
   testTimeout: 10000,
-  moduleFileExtensions: ['js', 'json'],
-  transform: {
-    '^.+\\.js$': ['babel-jest', { 
-      presets: [
-        ['@babel/preset-env', { 
-          targets: { 
-            node: 'current' 
-          } 
-        }]
-      ]
-    }]
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
+  transform: {},
   transformIgnorePatterns: [
     'node_modules/(?!(swagger-jsdoc|swagger-ui-express)/)'
   ],
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1'
-  },
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   verbose: true
 };
