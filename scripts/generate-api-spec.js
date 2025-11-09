@@ -53,7 +53,7 @@ async function generateApiSpec() {
 export default generateApiSpec;
 
 // Run the generator if this script is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   generateApiSpec().then((success) => {
     process.exit(success ? 0 : 1);
   });
