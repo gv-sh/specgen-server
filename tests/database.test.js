@@ -1,10 +1,10 @@
 /* global describe, test, expect, beforeEach, beforeAll, jest */
 
-const { request, cleanDatabase, initDatabase } = require('./setup');
-const fs = require('fs').promises;
-const path = require('path');
-const databaseService = require('../services/databaseService');
-const sqliteService = require('../services/sqliteService');
+import { request, cleanDatabase, initDatabase } from './setup.js';
+import fs from 'fs/promises';
+import path from 'path';
+import databaseService from '../services/databaseService.js';
+import sqliteService from '../services/sqliteService.js';
 
 // Correct way to mock the entire module
 jest.mock('../services/databaseService', () => ({

@@ -5,9 +5,16 @@
  * This script exports the swagger API specification to a static JSON file
  */
 
-const fs = require('fs').promises;
-const path = require('path');
-const swaggerSpec = require('../swagger');
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { createRequire } from 'module';
+import swaggerSpec from '../swagger.js';
+
+const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const OUTPUT_DIR = path.join(__dirname, '../');
 const OUTPUT_FILE = path.join(OUTPUT_DIR, 'api-spec.json');
@@ -42,12 +49,12 @@ async function generateApiSpec() {
   }
 }
 
+// Export the function for use in other modules
+export default generateApiSpec;
+
 // Run the generator if this script is executed directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   generateApiSpec().then((success) => {
     process.exit(success ? 0 : 1);
   });
-} else {
-  // Export the function for use in other modules
-  module.exports = generateApiSpec;
 }

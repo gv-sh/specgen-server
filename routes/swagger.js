@@ -1,8 +1,8 @@
 // routes/swagger.js
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const swaggerUi = require('swagger-ui-express');
-const swaggerSpec = require('../swagger');
+import swaggerUi from 'swagger-ui-express';
+import swaggerSpec from '../swagger.js';
 
 // Swagger UI
 router.use('/', swaggerUi.serve);
@@ -17,4 +17,4 @@ router.get('/json', (req, res) => {
   res.send(swaggerSpec);
 });
 
-module.exports = router;
+export default router;

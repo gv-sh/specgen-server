@@ -1,7 +1,9 @@
 // services/sqliteService.js
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const fs = require('fs').promises;
+import sqlite3Lib from 'sqlite3';
+import path from 'path';
+import fs from 'fs/promises';
+
+const sqlite3 = sqlite3Lib.verbose();
 
 class SQLiteService {
   constructor() {
@@ -820,4 +822,4 @@ class SQLiteService {
   }
 }
 
-module.exports = new SQLiteService();
+export default new SQLiteService();

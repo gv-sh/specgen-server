@@ -1,5 +1,5 @@
 // controllers/categoryController.js
-const databaseService = require('../services/databaseService');
+import databaseService from '../services/databaseService.js';
 
 /**
  * Controller for category operations
@@ -200,4 +200,4 @@ const categoryController = {
   }
 };
 
-module.exports = categoryController;
+export default categoryController;

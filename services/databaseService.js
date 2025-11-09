@@ -1,8 +1,14 @@
 // services/databaseService.js
 /* global process */
-const fs = require('fs').promises;
-const path = require('path');
-const sqliteService = require('./sqliteService');
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import sqliteService from './sqliteService.js';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Use test database in development mode
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -430,4 +436,4 @@ class DatabaseService {
   }
 }
 
-module.exports = new DatabaseService();
+export default new DatabaseService();

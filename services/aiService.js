@@ -1,7 +1,7 @@
 // services/aiService.js
-const axios = require('axios');
-const { Buffer } = require('buffer');
-const settingsService = require('./settingsService');
+import axios from 'axios';
+import { Buffer } from 'buffer';
+import settingsService from './settingsService.js';
 
 // Constants
 const MAX_VISUAL_ELEMENTS = 5;
@@ -539,4 +539,4 @@ class AIService {
   }
 }
 
-module.exports = new AIService();
+export default new AIService();

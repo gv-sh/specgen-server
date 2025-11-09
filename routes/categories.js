@@ -1,7 +1,7 @@
 // routes/categories.js
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const categoryController = require('../controllers/categoryController');
+import categoryController from '../controllers/categoryController.js';
 
 /**
  * @swagger
@@ -221,4 +221,4 @@ router.put('/:id', categoryController.updateCategory);
  */
 router.delete('/:id', categoryController.deleteCategory);
 
-module.exports = router;
+export default router;

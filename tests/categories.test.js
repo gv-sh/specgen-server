@@ -1,6 +1,6 @@
 // tests/categories.test.js
 /* global describe, test, expect, beforeAll */
-const { request, cleanDatabase, initDatabase } = require('./setup');
+import { request, cleanDatabase, initDatabase } from './setup.js';
 
 describe('Category API Tests', () => {
   // Clean database before all tests

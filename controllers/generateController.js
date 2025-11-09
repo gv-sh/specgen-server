@@ -1,7 +1,7 @@
 // controllers/generateController.js
-const aiService = require('../services/aiService');
-const databaseService = require('../services/databaseService');
-const settingsService = require('../services/settingsService');
+import aiService from '../services/aiService.js';
+import databaseService from '../services/databaseService.js';
+import settingsService from '../services/settingsService.js';
 
 /**
  * Validate a parameter value based on its type
@@ -257,4 +257,4 @@ const generateController = {
   }
 };
 
-module.exports = generateController;
+export default generateController;

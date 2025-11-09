@@ -2,11 +2,13 @@
   "name": "@gv-sh/specgen-server",
   "version": "0.14.0",
   "description": "SpecGen Server - API for Speculative Fiction Generator",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "NODE_ENV=development nodemon index.js",
-    "test": "jest --runInBand --config jest.config.js --colors=true --detectOpenHandles",
+    "dev": "NODE_ENV=development node --watch index.js",
+    "dev:legacy": "NODE_ENV=development nodemon index.js",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand --config jest.config.js --colors=true --detectOpenHandles",
     "recreate-db": "node scripts/recreateDatabase.js",
     "fix-and-test": "node scripts/fixAndTest.js",
     "init-db": "node scripts/initTestData.js",
@@ -54,13 +56,14 @@
   },
   "dependencies": {
     "axios": "^1.8.3",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "multer": "^1.4.5-lts.2",
+    "sqlite3": "^5.1.7",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1",
-    "sqlite3": "^5.1.7"
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",

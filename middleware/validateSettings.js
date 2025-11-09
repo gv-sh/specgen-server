@@ -9,7 +9,7 @@
 const validateSettings = (req, res, next) => {
   // Extract the request body
   const body = req.body;
-  
+
   // Detailed validation with specific error messages
   if (body === undefined || body === null) {
     return res.status(400).json({
@@ -18,7 +18,7 @@ const validateSettings = (req, res, next) => {
       detail: 'Request body is null or undefined'
     });
   }
-  
+
   if (Array.isArray(body)) {
     return res.status(400).json({
       success: false,
@@ -26,7 +26,7 @@ const validateSettings = (req, res, next) => {
       detail: 'Received an array instead of an object'
     });
   }
-  
+
   if (typeof body !== 'object') {
     return res.status(400).json({
       success: false,
@@ -34,9 +34,9 @@ const validateSettings = (req, res, next) => {
       detail: `Received type '${typeof body}' instead of 'object'`
     });
   }
-  
+
   // Continue to next middleware
   next();
 };
 
-module.exports = validateSettings;
+export default validateSettings;

@@ -1,8 +1,8 @@
 /* global describe, test, expect, beforeAll, jest */
-const { Buffer } = require('buffer');
-const { request, initDatabase } = require('./setup');
-const databaseService = require('../services/databaseService');
-const sqliteService = require('../services/sqliteService');
+import { Buffer } from 'buffer';
+import { request, initDatabase } from './setup.js';
+import databaseService from '../services/databaseService.js';
+import sqliteService from '../services/sqliteService.js';
 // aiService is mocked later
 
 const mockImageData = Buffer.from('test-image-data');

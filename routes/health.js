@@ -1,10 +1,12 @@
 // routes/health.js
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const os = require('os');
+import os from 'os';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 const { version } = require('../package.json');
-const sqliteService = require('../services/sqliteService');
-const databaseService = require('../services/databaseService');
+import sqliteService from '../services/sqliteService.js';
+import databaseService from '../services/databaseService.js';
 
 /**
  * @swagger
@@ -165,4 +167,4 @@ router.get('/ping', (req, res) => {
   res.status(200).json({ message: 'pong' });
 });
 
-module.exports = router;
+export default router;

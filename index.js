@@ -1,10 +1,19 @@
 // index.js
 /* global process */
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const errorHandler = require('./middleware/errorHandler');
-const net = require('net');
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import compression from 'compression';
+import net from 'net';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import errorHandler from './middleware/errorHandler.js';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Constants
 const DEFAULT_PORT = 3000;
@@ -36,7 +45,7 @@ async function findAvailablePort(startPort, maxAttempts = MAX_PORT_ATTEMPTS) {
   if (startPort < DEFAULT_PORT) {
     startPort = DEFAULT_PORT;
   }
-  
+
   for (let port = startPort; port < startPort + maxAttempts; port++) {
     if (await isPortAvailable(port)) {
       return port;
@@ -50,15 +59,13 @@ const app = express();
 let PORT = process.env.PORT || DEFAULT_PORT;
 
 // Middleware
+app.use(compression()); // Enable gzip compression for all responses
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Production mode: serve React builds
 if (process.env.NODE_ENV === 'production') {
-  const path = require('path');
-  const fs = require('fs');
-  
   // Serve admin at /admin
   const adminBuildPath = path.join(process.cwd(), 'admin/build');
   if (fs.existsSync(adminBuildPath)) {
@@ -68,7 +75,7 @@ if (process.env.NODE_ENV === 'production') {
     });
     console.log('✅ Admin interface available at /admin');
   }
-  
+
   // Serve user app at /app and root
   const userBuildPath = path.join(process.cwd(), 'user/build');
   if (fs.existsSync(userBuildPath)) {
@@ -85,12 +92,12 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Routes
-const categoryRoutes = require('./routes/categories');
-const parameterRoutes = require('./routes/parameters');
-const generateRoutes = require('./routes/generate');
-const databaseRoutes = require('./routes/database');
-const contentRoutes = require('./routes/content');
-const settingsRoutes = require('./routes/settings'); // New settings routes
+import categoryRoutes from './routes/categories.js';
+import parameterRoutes from './routes/parameters.js';
+import generateRoutes from './routes/generate.js';
+import databaseRoutes from './routes/database.js';
+import contentRoutes from './routes/content.js';
+import settingsRoutes from './routes/settings.js';
 
 // API Routes
 app.use('/api/categories', categoryRoutes);
@@ -98,22 +105,26 @@ app.use('/api/parameters', parameterRoutes);
 app.use('/api/generate', generateRoutes);
 app.use('/api/database', databaseRoutes);
 app.use('/api/content', contentRoutes);
-app.use('/api/settings', settingsRoutes); // Add settings routes
+app.use('/api/settings', settingsRoutes);
 
 // Only add Swagger in non-test environment
 if (process.env.NODE_ENV !== 'test') {
-  const swaggerRoutes = require('./routes/swagger');
+  const swaggerModule = await import('./routes/swagger.js');
+  const swaggerRoutes = swaggerModule.default;
   app.use('/api-docs', swaggerRoutes);
 }
 
 // Health check routes
-const healthRoutes = require('./routes/health');
+import healthRoutes from './routes/health.js';
 app.use('/api/health', healthRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
 
-if (require.main === module) {
+// Check if this file is being run directly
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+
+if (isMainModule) {
   (async () => {
     try {
       PORT = await findAvailablePort(PORT);
@@ -131,4 +142,4 @@ if (require.main === module) {
   })();
 }
 
-module.exports = app;
+export default app;

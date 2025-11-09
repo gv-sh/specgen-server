@@ -1,6 +1,7 @@
 /* global describe, test, expect, jest, beforeEach, afterEach */
 
 // Mock the sqlite3 module
+import { jest } from "@jest/globals";
 jest.mock('sqlite3', () => {
   // Create mock implementation for Database constructor and methods
   const mockDb = {
@@ -111,6 +112,7 @@ jest.mock('sqlite3', () => {
 });
 
 // Mock fs.promises
+import { jest } from "@jest/globals";
 jest.mock('fs', () => ({
   promises: {
     mkdir: jest.fn().mockResolvedValue(undefined)
@@ -118,7 +120,7 @@ jest.mock('fs', () => ({
 }));
 
 // Load the SQLiteService after mocking dependencies
-const sqliteService = require('../services/sqliteService');
+import sqliteService from '../services/sqliteService.js';
 
 describe('SQLiteService Tests', () => {
   beforeEach(() => {

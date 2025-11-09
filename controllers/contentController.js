@@ -1,6 +1,6 @@
 // controllers/contentController.js
-const databaseService = require('../services/databaseService');
-const { Buffer } = require('buffer');
+import databaseService from '../services/databaseService.js';
+import { Buffer } from 'buffer';
 
 /**
  * Controller for managing generated content
@@ -314,4 +314,4 @@ const contentController = {
   }
 };
 
-module.exports = contentController;
+export default contentController;

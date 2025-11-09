@@ -333,7 +333,7 @@ function expectMemoryUsage(monitor, requestCount) {
   return benchmarks;
 }
 
-module.exports = {
+export {
   MemoryMonitor,
   monitorMemoryDuring,
   expectMemoryUsage

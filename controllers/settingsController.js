@@ -1,5 +1,5 @@
 // controllers/settingsController.js
-const settingsService = require('../services/settingsService');
+import settingsService from '../services/settingsService.js';
 
 /**
  * Controller for settings operations
@@ -100,4 +100,4 @@ const settingsController = {
   }
 };
 
-module.exports = settingsController;
+export default settingsController;

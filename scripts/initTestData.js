@@ -1,5 +1,5 @@
 // scripts/initTestData.js
-const databaseService = require('../services/databaseService');
+import databaseService from '../services/databaseService.js';
 
 /**
  * Initialize the database with test categories and parameters
@@ -358,8 +358,11 @@ async function createSampleContent() {
   }
 }
 
+// Export the functions for use in other modules
+export { initializeTestData, resetDatabase };
+
 // Run the initialization if this is the main module
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   initializeTestData()
     .then(() => {
       console.log('Initialization complete. You can now use Swagger UI to test the API.');
@@ -369,10 +372,4 @@ if (require.main === module) {
       console.error('Initialization failed:', error);
       process.exit(1);
     });
-} else {
-  // Export the function for use in other modules
-  module.exports = {
-    initializeTestData,
-    resetDatabase
-  };
 }

@@ -1,7 +1,7 @@
 // routes/generate.js
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const generateController = require('../controllers/generateController');
+import generateController from '../controllers/generateController.js';
 
 /**
  * @swagger
@@ -210,4 +210,4 @@ const generateController = require('../controllers/generateController');
  */
 router.post('/', generateController.generate);
 
-module.exports = router;
+export default router;

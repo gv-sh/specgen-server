@@ -1,6 +1,6 @@
 /* global describe, test, expect, beforeAll */
 
-const { request, createTestCategory, cleanDatabase, initDatabase } = require('./setup');
+import { request, createTestCategory, cleanDatabase, initDatabase } from './setup.js';
 
 describe('Parameter API Tests', () => {
   let categoryId;
