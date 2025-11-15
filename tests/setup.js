@@ -4,7 +4,7 @@ import { jest } from '@jest/globals';
 // Make jest available globally for all tests
 global.jest = jest;
 
-import app from '../app.js';
+import app from '../server.js';
 import supertest from 'supertest';
 import path from 'path';
 import fs from 'fs/promises';

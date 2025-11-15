@@ -3,7 +3,7 @@
  */
 
 import request from 'supertest';
-import app from '../app.js';
+import app from '../server.js';
 
 describe('Simplified SpecGen API', () => {
   test('GET / - Should return API information', async () => {
