@@ -1,6 +1,6 @@
 // scripts/initTestData.js
 import { fileURLToPath } from 'url';
-import databaseService from '../services/databaseService.js';
+import dataService from '../lib/data.js';
 
 /**
  * Initialize the database with test categories and parameters
@@ -41,12 +41,11 @@ async function initializeTestData() {
  */
 async function resetDatabase() {
   try {
-    const emptyDatabase = {
+    // Write empty JSON data
+    await dataService.writeJsonData({
       categories: [],
-      parameters: [],
-      generatedContent: []
-    };
-    await databaseService.saveData(emptyDatabase);
+      parameters: []
+    });
     console.log('Database reset successfully');
   } catch (error) {
     console.error('Error resetting database:', error);
@@ -86,7 +85,7 @@ async function createCategories() {
     // Save each category
     const createdCategories = [];
     for (const category of categories) {
-      const created = await databaseService.createCategory(category);
+      const created = await dataService.createCategory(category);
       createdCategories.push(created);
     }
 
@@ -266,7 +265,7 @@ async function createParametersForCategory(categoryId) {
     // Save the parameters
     const createdParameters = [];
     for (const parameter of parameters) {
-      const created = await databaseService.createParameter(parameter);
+      const created = await dataService.createParameter(parameter);
       createdParameters.push(created);
     }
 
@@ -348,7 +347,7 @@ async function createSampleContent() {
     // Save each content item
     const createdContent = [];
     for (const content of sampleContent) {
-      const created = await databaseService.saveGeneratedContent(content);
+      const created = await dataService.saveGeneratedContent(content);
       createdContent.push(created);
     }
 

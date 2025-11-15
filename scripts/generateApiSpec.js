@@ -9,7 +9,34 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import swaggerSpec from '../swagger.js';
+import swaggerJsdoc from 'swagger-jsdoc';
+
+// Generate swagger spec using same configuration as system API
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'SpecGen API',
+      version: '0.14.0',
+      description: 'API for Speculative Fiction Generator'
+    },
+    servers: [
+      { url: 'http://localhost:3000', description: 'Development server' },
+      { url: 'http://localhost:80', description: 'Production server' }
+    ],
+    tags: [
+      { name: 'Admin', description: 'Administrative operations' },
+      { name: 'Content', description: 'Content generation and management' },
+      { name: 'System', description: 'System operations and monitoring' }
+    ]
+  },
+  apis: [
+    './api/*.js',
+    './lib/*.js'
+  ]
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

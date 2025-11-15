@@ -4,8 +4,7 @@ import { jest } from '@jest/globals';
 // Make jest available globally for all tests
 global.jest = jest;
 
-jest.mock('../swagger.js');
-import app from '../index.js';
+import app from '../app.js';
 import supertest from 'supertest';
 import path from 'path';
 import fs from 'fs/promises';
