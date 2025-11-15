@@ -13,13 +13,6 @@
       "visibility": "Show",
       "description": "Stories with magic and mythical creatures",
       "year": 1250
-    },
-    {
-      "id": "test-generation-category",
-      "name": "Test Generation Category",
-      "visibility": "Show",
-      "description": "",
-      "year": 2075
     }
   ],
   "parameters": [
@@ -60,55 +53,7 @@
         }
       ],
       "config": {}
-    },
-    {
-      "id": "test-generation-category-test-dropdown",
-      "name": "Test Dropdown",
-      "type": "Dropdown",
-      "visibility": "Basic",
-      "categoryId": "test-generation-category",
-      "description": "",
-      "required": false,
-      "values": [
-        {
-          "id": "test-1",
-          "label": "Test 1"
-        },
-        {
-          "id": "test-2",
-          "label": "Test 2"
-        }
-      ],
-      "config": {}
-    },
-    {
-      "id": "test-generation-category-test-slider",
-      "name": "Test Slider",
-      "type": "Slider",
-      "visibility": "Basic",
-      "categoryId": "test-generation-category",
-      "description": "",
-      "required": false,
-      "values": [],
-      "config": {
-        "min": 0,
-        "max": 100,
-        "step": 1
-      }
-    },
-    {
-      "id": "test-generation-category-test-toggle",
-      "name": "Test Toggle",
-      "type": "Toggle Switch",
-      "visibility": "Basic",
-      "categoryId": "test-generation-category",
-      "description": "",
-      "required": false,
-      "values": {
-        "on": "Yes",
-        "off": "No"
-      },
-      "config": {}
     }
-  ]
+  ],
+  "generatedContent": []
 }

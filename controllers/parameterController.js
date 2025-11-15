@@ -1,63 +1,28 @@
-// controllers/parameterController.js
 import databaseService from '../services/databaseService.js';
+import { sendSuccess, sendNotFound, sendValidationError, sendSuccessWithMessage, asyncHandler } from '../utils/responseHelper.js';
+import { validateRequired, validateUniqueName, validateParameterType } from '../utils/validation.js';
 
-/**
- * Controller for parameter operations
- */
 const parameterController = {
-  /**
-   * Get all parameters
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next middleware function
-   */
-  async getAllParameters(req, res, next) {
-    try {
-      // If categoryId query param is provided, filter by category
-      const { categoryId } = req.query;
-      
-      let parameters;
-      if (categoryId) {
-        parameters = await databaseService.getParametersByCategoryId(categoryId);
-      } else {
-        parameters = await databaseService.getParameters();
-      }
-      
-      res.status(200).json({
-        success: true,
-        data: parameters
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
+  getAllParameters: asyncHandler(async (req, res) => {
+    const { categoryId } = req.query;
+    
+    const parameters = categoryId 
+      ? await databaseService.getParametersByCategoryId(categoryId)
+      : await databaseService.getParameters();
+    
+    sendSuccess(res, parameters);
+  }),
 
-  /**
-   * Get a parameter by ID
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next middleware function
-   */
-  async getParameterById(req, res, next) {
-    try {
-      const { id } = req.params;
-      const parameter = await databaseService.getParameterById(id);
-      
-      if (!parameter) {
-        return res.status(404).json({
-          success: false,
-          error: `Parameter with ID ${id} not found`
-        });
-      }
-      
-      res.status(200).json({
-        success: true,
-        data: parameter
-      });
-    } catch (error) {
-      next(error);
+  getParameterById: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const parameter = await databaseService.getParameterById(id);
+    
+    if (!parameter) {
+      return sendNotFound(res, "Parameter", id);
     }
-  },
+    
+    sendSuccess(res, parameter);
+  }),
 
   /**
    * Create a new parameter

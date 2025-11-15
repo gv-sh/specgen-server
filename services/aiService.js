@@ -1,23 +1,19 @@
-// services/aiService.js
 import axios from 'axios';
 import { Buffer } from 'buffer';
 import settingsService from './settingsService.js';
+import logger from '../utils/logger.js';
+import environment from '../utils/environment.js';
+import { extractVisualElementsFromText } from '../utils/visualElementsExtractor.js';
 
-// Constants
-const MAX_VISUAL_ELEMENTS = 5;
-
-/**
- * Service for interacting with OpenAI API
- */
 class AIService {
   constructor() {
-    this.apiKey = process.env.OPENAI_API_KEY;
+    this.apiKey = environment.config.openaiApiKey;
     this.baseUrl = 'https://api.openai.com/v1';
     this.chatCompletionUrl = `${this.baseUrl}/chat/completions`;
     this.imageGenerationUrl = `${this.baseUrl}/images/generations`;
 
-    if (!this.apiKey && process.env.NODE_ENV !== 'test') {
-      console.error('ERROR: OPENAI_API_KEY not set in environment variables');
+    if (!environment.hasApiKey) {
+      logger.error('OPENAI_API_KEY not set in environment variables');
     }
   }
 
@@ -41,7 +37,9 @@ class AIService {
         throw new Error(`Unsupported generation type: ${type}`);
       }
     } catch (error) {
-      console.error(`Error generating ${type}:`, error.response ? error.response.data : error.message);
+      logger.error(`Error generating ${type}`, {
+        error: error.response ? error.response.data : error.message
+      });
       return {
         success: false,
         error: error.response ? error.response.data.error.message : error.message
@@ -97,11 +95,11 @@ class AIService {
         }
       );
       
-      // Log success response
-      console.log('OpenAI response received for fiction:', 
-        response.data?.choices ? 'Success' : 'No choices in response',
-        'Model:', response.data?.model || 'unknown'
-      );
+      logger.ai('Fiction generation completed', {
+        model: response.data?.model || 'unknown',
+        hasChoices: Boolean(response.data?.choices),
+        tokens: response.data?.usage?.total_tokens
+      });
       
       // Extract the generated content and title from response
       const generatedContent = response.data.choices[0].message.content;
@@ -121,9 +119,9 @@ class AIService {
         }
       };
     } catch (error) {
-      console.error('Error calling OpenAI text generation API:', 
-        error.response ? JSON.stringify(error.response.data, null, 2) : error.message
-      );
+      logger.error('OpenAI text generation failed', {
+        error: error.response ? error.response.data : error.message
+      });
       return {
         success: false,
         error: error.response ? error.response.data.error.message : error.message
@@ -179,7 +177,9 @@ class AIService {
         }
       };
     } catch (error) {
-      console.error('Error calling OpenAI image generation API:', error.response ? error.response.data : error.message);
+      logger.error('OpenAI image generation failed', {
+        error: error.response ? error.response.data : error.message
+      });
       return {
         success: false,
         error: error.response ? error.response.data.error.message : error.message
@@ -248,22 +248,17 @@ class AIService {
   formatImagePrompt(parameters, year = null, generatedText = null) {
     let prompt = "Create a beautiful, detailed image";
     
-    // If we have generated text, use it to create a more coherent image
     if (generatedText) {
-      // Extract key visual elements from the generated text
-      const visualElements = this.extractVisualElementsFromText(generatedText);
+      const visualElements = extractVisualElementsFromText(generatedText);
       
       if (visualElements.length > 0) {
         prompt += ` showing this scene: ${visualElements.join(', ')}`;
       }
       
-      // Add context from the generated text
       prompt += "\n\nMake the image match this story:\n";
-      // Use the first 400 characters of the story for context
       const storyExcerpt = generatedText.substring(0, 400) + (generatedText.length > 400 ? '...' : '');
       prompt += `"${storyExcerpt}"\n\n`;
     } else {
-      // Fallback to parameter-based prompt when no text is provided
       prompt += " with these story elements:\n\n";
     }
     
@@ -306,144 +301,6 @@ class AIService {
     return prompt;
   }
 
-  /**
-   * Extract visual elements from generated text to create a more coherent image
-   * @param {String} text - Generated story text
-   * @returns {Array<String>} - Array of visual elements
-   */
-  extractVisualElementsFromText(text) {
-    if (!text) return [];
-    
-    const visualElements = [];
-    
-    // Remove the title if present
-    const cleanText = text.replace(/\*\*Title:.*?\*\*/, '').trim();
-    
-    // Extract characters - improved patterns with Indian names and titles
-    const characterPatterns = [
-      // Western titles (keep existing)
-      /(Dr\.|Professor|Captain|Agent|Detective)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/gi,
-      // Indian titles and honorifics
-      /(Pandit|Pundit|Guru|Swami|Baba|Seth|Sahib|Mahatma|Acharya)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/gi,
-      // Common Indian names with action words
-      /(Arjun|Priya|Raj|Kavya|Dev|Meera|Ravi|Anita|Vikram|Shreya|Kiran|Nisha|Amit|Pooja)\s+(stood|walked|ran|sat|looked|gazed|stared|stepped|entered|arrived|approached)/gi,
-      // Generic action patterns (keep existing)
-      /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(stood|walked|ran|sat|looked|gazed|stared|stepped)/gi
-    ];
-    
-    for (const pattern of characterPatterns) {
-      const matches = cleanText.match(pattern);
-      if (matches) {
-        matches.slice(0, 3).forEach(match => {
-          // Clean up the match to get just the name
-          let cleaned = match.replace(/\s+(stood|walked|ran|sat|looked|gazed|stared|stepped).*$/i, '').trim();
-          // For patterns with titles, keep the full title + name
-          if (cleaned.match(/^(Dr\.|Professor|Captain|Agent|Detective)/)) {
-            visualElements.push(cleaned);
-          } else {
-            // For action-based patterns, extract just the name before the action
-            const nameMatch = match.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/);
-            if (nameMatch) {
-              visualElements.push(nameMatch[1]);
-            }
-          }
-        });
-      }
-    }
-    
-    // Extract locations and settings - enhanced with Indian places
-    const locationPatterns = [
-      // Generic sci-fi locations (keep existing)
-      /(in|at|on|through)\s+(the\s+)?([A-Z][a-z\s]{3,30}(?:city|planet|station|facility|dome|colony|ship|chamber|laboratory|castle|forest|mountain|desert|ocean|space))/gi,
-      // Indian architectural and cultural places
-      /(in|at|on|through)\s+(the\s+)?([A-Z][a-z\s]{3,30}(?:temple|mandir|gurdwara|mosque|masjid|ashram|ghat|bazaar|market|haveli|palace|fort|courtyard|terrace|garden))/gi,
-      // Indian cities and regions
-      /(in|at|on|through)\s+(the\s+)?(Mumbai|Delhi|Bangalore|Chennai|Kolkata|Hyderabad|Pune|Ahmedabad|Jaipur|Kerala|Punjab|Gujarat|Rajasthan|Bengal|Maharashtra)\s*(city|region|state)?/gi,
-      // Vehicles and structures
-      /(starship|spaceship|vessel|craft|vehicle|train|bus|auto|rickshaw)\s+([A-Z][a-z]+)/gi,
-      // Settlements and facilities
-      /(colony|city|station|outpost|facility|village|town|settlement)\s+([A-Z][a-z\s]+)/gi
-    ];
-    
-    for (const pattern of locationPatterns) {
-      const matches = cleanText.match(pattern);
-      if (matches) {
-        matches.slice(0, 2).forEach(match => {
-          const location = match.replace(/^(in|at|on|through)\s+(the\s+)?/i, '').trim();
-          if (location.length > 3 && location.length < 50) {
-            visualElements.push(location);
-          }
-        });
-      }
-    }
-    
-    // Extract objects and technology - enhanced with Indian cultural items
-    // Pattern 1: adjective + noun combinations (tech and cultural)
-    let matches = cleanText.match(/(advanced|alien|ancient|glowing|metallic|crystalline|golden|silver|ornate|carved|decorated)\s+(scanner|device|weapon|tool|helmet|suit|console|terminal|reactor|portal|gateway|chamber|throne|altar|artifact|tabla|sitar|diya|lamp|statue|idol|painting|tapestry|jewelry|bangles|necklace|turban|sari|dupatta)/gi);
-    if (matches) {
-      matches.forEach(match => {
-        visualElements.push(match.trim());
-      });
-    }
-    
-    // Pattern 2: standalone objects (tech and cultural)
-    matches = cleanText.match(/\b(scanner|device|weapon|tool|helmet|suit|console|terminal|reactor|portal|gateway|chamber|throne|altar|artifact|tabla|sitar|harmonium|veena|diya|diyas|lamp|lamps|incense|agarbatti|marigold|jasmine|lotus|rangoli|kolam|mandala|statue|idol|painting|tapestry|jewelry|bangles|necklace|turban|sari|dupatta|dhoti|kurta)\b/gi);
-    if (matches) {
-      matches.forEach(match => {
-        visualElements.push(match.trim());
-      });
-    }
-    
-    // Extract atmospheric elements - enhanced with Indian weather and ambiance
-    // Pattern 1: action + atmospheric combinations (including monsoon elements)
-    matches = cleanText.match(/(glittering|shimmering|glowing|pulsing|swirling|drifting|falling|pouring|flowing)\s+(purple\s+mist|mist|fog|clouds|dust|air|rain|droplets|petals|smoke|steam)/gi);
-    if (matches) {
-      matches.forEach(match => {
-        visualElements.push(match.trim());
-      });
-    }
-    
-    // Pattern 2: color + atmospheric combinations (including warm Indian colors)
-    matches = cleanText.match(/(red|blue|green|golden|silver|purple|crimson|saffron|ochre|vermillion|henna)\s+(light|glow|aurora|mist|dust|sky|sunset|sunrise|flame|fire)/gi);
-    if (matches) {
-      matches.forEach(match => {
-        visualElements.push(match.trim());
-      });
-    }
-    
-    // Pattern 3: standalone atmospheric elements (including Indian weather)
-    matches = cleanText.match(/\b(chamber|storm|clouds|mist|fog|aurora|lightning|monsoon|rain|sunshine|heat|humidity|breeze|wind|smoke|steam|flames|fire|candles)\b/gi);
-    if (matches) {
-      matches.forEach(match => {
-        visualElements.push(match.trim());
-      });
-    }
-    
-    // Remove duplicates (case-insensitive) and limit to most important elements
-    const uniqueElements = [];
-    const seenElements = new Set();
-    
-    for (const element of visualElements) {
-      const lowerElement = element.toLowerCase();
-      // Additional check to avoid partial matches within longer names
-      let isDuplicate = false;
-      for (const seenElement of seenElements) {
-        if (seenElement === lowerElement || 
-            (lowerElement.includes(seenElement) && seenElement.length > 5) ||
-            (seenElement.includes(lowerElement) && lowerElement.length > 5)) {
-          isDuplicate = true;
-          break;
-        }
-      }
-      
-      if (!isDuplicate) {
-        seenElements.add(lowerElement);
-        uniqueElements.push(element);
-      }
-    }
-    
-    return uniqueElements.slice(0, MAX_VISUAL_ELEMENTS);
-  }
 
   /**
    * Generate both fiction and image content based on the same parameters
@@ -486,9 +343,9 @@ class AIService {
         }
       };
     } catch (error) {
-      console.error('Error in combined generation:', 
-        error.response ? JSON.stringify(error.response.data, null, 2) : error.message
-      );
+      logger.error('Combined generation failed', {
+        error: error.response ? error.response.data : error.message
+      });
       return {
         success: false,
         error: error.response ? error.response.data.error.message : error.message

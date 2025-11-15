@@ -1,11 +1,8 @@
-// services/settingsService.js
 import fs from 'fs/promises';
 import path from 'path';
+import { getDatabasePaths } from '../utils/pathHelper.js';
 
-// Settings file path
-// Construct paths manually without __filename
-let rootDir = path.resolve('.');
-const SETTINGS_PATH = path.join(rootDir, 'data/settings.json');
+const SETTINGS_PATH = getDatabasePaths().settings;
 
 // Default settings if file doesn't exist
 const DEFAULT_SETTINGS = {

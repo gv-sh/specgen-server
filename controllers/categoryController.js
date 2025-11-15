@@ -1,203 +1,100 @@
-// controllers/categoryController.js
 import databaseService from '../services/databaseService.js';
+import { sendSuccess, sendNotFound, sendValidationError, sendSuccessWithMessage, asyncHandler } from '../utils/responseHelper.js';
 
-/**
- * Controller for category operations
- */
 const categoryController = {
-  /**
-   * Get all categories
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next middleware function
-   */
-  async getAllCategories(req, res, next) {
-    try {
-      const categories = await databaseService.getCategories();
-      res.status(200).json({
-        success: true,
-        data: categories
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
+  getAllCategories: asyncHandler(async (req, res) => {
+    const categories = await databaseService.getCategories();
+    sendSuccess(res, categories);
+  }),
 
-  /**
-   * Get a category by ID
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next middleware function
-   */
-  async getCategoryById(req, res, next) {
-    try {
-      const { id } = req.params;
-      const category = await databaseService.getCategoryById(id);
-      
-      if (!category) {
-        return res.status(404).json({
-          success: false,
-          error: `Category with ID ${id} not found`
-        });
-      }
-      
-      res.status(200).json({
-        success: true,
-        data: category
-      });
-    } catch (error) {
-      next(error);
+  getCategoryById: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const category = await databaseService.getCategoryById(id);
+    
+    if (!category) {
+      return sendNotFound(res, "Category", id);
     }
-  },
+    
+    sendSuccess(res, category);
+  }),
 
-  /**
-   * Create a new category
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next middleware function
-   */
-  async createCategory(req, res, next) {
-    try {
-      const { name, visibility, description, year } = req.body;
-      
-      // Validate input
-      if (!name) {
-        return res.status(400).json({
-          success: false,
-          error: 'Name is required for a category'
-        });
-      }
-      
-      // Check if category name already exists
+  createCategory: asyncHandler(async (req, res) => {
+    const { name, visibility, description, year } = req.body;
+    
+    if (!name) {
+      return sendValidationError(res, 'Name is required for a category');
+    }
+    
+    const existingCategories = await databaseService.getCategories();
+    const categoryExists = existingCategories.some(cat => cat.name.toLowerCase() === name.toLowerCase());
+    
+    if (categoryExists) {
+      return sendValidationError(res, `Category with name "${name}" already exists`);
+    }
+    
+    const newCategory = {
+      id: name.replace(/\s+/g, '-').toLowerCase(),
+      name,
+      visibility: visibility || 'Show',
+      description: description || '',
+      year: year || null
+    };
+    
+    const createdCategory = await databaseService.createCategory(newCategory);
+    sendSuccess(res, createdCategory, 201);
+  }),
+
+  updateCategory: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { name, visibility, description, year } = req.body;
+    
+    if (!name && !visibility && !description && year === undefined) {
+      return sendValidationError(res, 'At least one field (name, visibility, description, or year) is required for update');
+    }
+    
+    const category = await databaseService.getCategoryById(id);
+    if (!category) {
+      return sendNotFound(res, "Category", id);
+    }
+    
+    if (name && name !== category.name) {
       const existingCategories = await databaseService.getCategories();
-      const categoryExists = existingCategories.some(cat => cat.name.toLowerCase() === name.toLowerCase());
+      const categoryExists = existingCategories.some(cat => 
+        cat.id !== id && cat.name.toLowerCase() === name.toLowerCase()
+      );
       
       if (categoryExists) {
-        return res.status(400).json({
-          success: false,
-          error: `Category with name "${name}" already exists`
-        });
+        return sendValidationError(res, `Category with name "${name}" already exists`);
       }
-      
-      // Create a new category, using name as ID
-      const newCategory = {
-        id: name.replace(/\s+/g, '-').toLowerCase(),
-        name,
-        visibility: visibility || 'Show',
-        description: description || '',
-        year: year || null // Add year field with default value of null
-      };
-      
-      const createdCategory = await databaseService.createCategory(newCategory);
-      
-      res.status(201).json({
-        success: true,
-        data: createdCategory
-      });
-    } catch (error) {
-      next(error);
     }
-  },
+    
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (visibility) updateData.visibility = visibility;
+    if (description !== undefined) updateData.description = description;
+    if (year !== undefined) updateData.year = year;
+    
+    const updatedCategory = await databaseService.updateCategory(id, updateData);
+    sendSuccess(res, updatedCategory);
+  }),
 
-  /**
-   * Update a category
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next middleware function
-   */
-  async updateCategory(req, res, next) {
-    try {
-      const { id } = req.params;
-      const { name, visibility, description, year } = req.body;
-      
-      // Validate input
-      if (!name && !visibility && !description && year === undefined) {
-        return res.status(400).json({
-          success: false,
-          error: 'At least one field (name, visibility, description, or year) is required for update'
-        });
-      }
-      
-      // Check if category exists
-      const category = await databaseService.getCategoryById(id);
-      if (!category) {
-        return res.status(404).json({
-          success: false,
-          error: `Category with ID ${id} not found`
-        });
-      }
-      
-      // If name is changing, check if the new name already exists
-      if (name && name !== category.name) {
-        const existingCategories = await databaseService.getCategories();
-        const categoryExists = existingCategories.some(cat => 
-          cat.id !== id && cat.name.toLowerCase() === name.toLowerCase()
-        );
-        
-        if (categoryExists) {
-          return res.status(400).json({
-            success: false,
-            error: `Category with name "${name}" already exists`
-          });
-        }
-      }
-      
-      // Prepare update object
-      const updateData = {};
-      if (name) updateData.name = name;
-      if (visibility) updateData.visibility = visibility;
-      if (description !== undefined) updateData.description = description;
-      if (year !== undefined) updateData.year = year;
-      
-      const updatedCategory = await databaseService.updateCategory(id, updateData);
-      
-      res.status(200).json({
-        success: true,
-        data: updatedCategory
-      });
-    } catch (error) {
-      next(error);
+  deleteCategory: asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    const category = await databaseService.getCategoryById(id);
+    if (!category) {
+      return sendNotFound(res, "Category", id);
     }
-  },
-
-  /**
-   * Delete a category
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @param {Function} next - Express next middleware function
-   */
-  async deleteCategory(req, res, next) {
-    try {
-      const { id } = req.params;
-      
-      // Check if category exists before attempting to delete
-      const category = await databaseService.getCategoryById(id);
-      if (!category) {
-        return res.status(404).json({
-          success: false,
-          error: `Category with ID ${id} not found`
-        });
-      }
-      
-      // Get parameters associated with this category for proper error reporting
-      const parameters = await databaseService.getParametersByCategoryId(id);
-      
-      // Perform the deletion (this will also delete associated parameters)
-      await databaseService.deleteCategory(id);
-      
-      res.status(200).json({
-        success: true,
-        message: `Category '${category.name}' deleted successfully`,
-        data: {
-          deletedCategory: category,
-          deletedParameters: parameters,
-          parameterCount: parameters.length
-        }
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
+    
+    const parameters = await databaseService.getParametersByCategoryId(id);
+    await databaseService.deleteCategory(id);
+    
+    sendSuccessWithMessage(res, {
+      deletedCategory: category,
+      deletedParameters: parameters,
+      parameterCount: parameters.length
+    }, `Category '${category.name}' deleted successfully`);
+  })
 };
 
 export default categoryController;

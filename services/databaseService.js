@@ -1,21 +1,10 @@
-// services/databaseService.js
-/* global process */
 import fs from 'fs/promises';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 import sqliteService from './sqliteService.js';
+import logger from '../utils/logger.js';
+import { getDatabasePaths } from '../utils/pathHelper.js';
 
-// Get __dirname equivalent in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Use test database in development mode
-const isDevelopment = process.env.NODE_ENV !== 'production';
-const DATABASE_PATH = path.resolve(
-  __dirname,
-  `../data/${isDevelopment ? 'test-database.json' : 'database.json'}`
-);
+const DATABASE_PATH = getDatabasePaths().json;
 
 // Default database structure
 const DEFAULT_DATABASE = { 
@@ -91,13 +80,11 @@ class DatabaseService {
    * @param {Error} error - Error object
    */
   #logError(message, error) {
-    if (isDevelopment) {
-      console.error(message, {
-        errorMessage: error.message,
-        errorStack: error.stack,
-        databasePath: DATABASE_PATH
-      });
-    }
+    logger.error(message, {
+      errorMessage: error.message,
+      errorStack: error.stack,
+      databasePath: DATABASE_PATH
+    });
   }
 
   /**

@@ -1,21 +1,13 @@
-// services/sqliteService.js
 import sqlite3Lib from 'sqlite3';
 import path from 'path';
 import fs from 'fs/promises';
+import { getDatabasePaths } from '../utils/pathHelper.js';
 
 const sqlite3 = sqlite3Lib.verbose();
 
 class SQLiteService {
   constructor() {
-    // Determine database path based on environment
-    // Construct paths manually without __filename
-    let rootDir = path.resolve('.');
-    const nodeEnv = (process && process.env && process.env.NODE_ENV) || 'development';
-    this.dbPath = nodeEnv === 'test'
-      ? path.join(rootDir, 'data/test-generated-content.db')
-      : path.join(rootDir, 'data/generated-content.db');
-
-    // Promise to track initialization completion
+    this.dbPath = getDatabasePaths().sqlite;
     this._initialized = this._initialize();
   }
 
