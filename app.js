@@ -11,10 +11,7 @@ import rateLimit from 'express-rate-limit';
 import boom from '@hapi/boom';
 import pino from 'pino';
 import { ZodError } from 'zod';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
+import config from './config/index.js';
 
 // Import API routes
 import adminRoutes from './api/admin.js';
@@ -23,8 +20,8 @@ import systemRoutes from './api/system.js';
 
 // Initialize logger
 const logger = pino({
-  level: process.env.LOG_LEVEL || 'info',
-  transport: process.env.NODE_ENV !== 'production' ? {
+  level: config.get('logging.level'),
+  transport: config.get('env') !== 'production' ? {
     target: 'pino-pretty',
     options: { colorize: true }
   } : undefined
@@ -32,7 +29,7 @@ const logger = pino({
 
 // Create Express app
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = config.get('server.port');
 
 // === MIDDLEWARE ===
 
@@ -44,8 +41,8 @@ app.use(helmet({
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 1000, // Limit each IP to 1000 requests per windowMs
+  windowMs: config.get('security.rateLimiting.windowMs'),
+  max: config.get('security.rateLimiting.maxRequests'),
   message: { 
     success: false, 
     error: 'Too many requests, please try again later' 
@@ -57,15 +54,13 @@ app.use('/api/', limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://admin.specgen.app', 'https://app.specgen.app']
-    : ['http://localhost:3001', 'http://localhost:3002', 'http://localhost:3000'],
+  origin: config.getCorsOrigins(),
   credentials: true
 }));
 
 // Body parsing and compression
 app.use(compression());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: config.get('server.bodyLimit') }));
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging
@@ -103,9 +98,9 @@ app.use('/api/health', systemRoutes);
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
-    name: 'SpecGen API',
-    version: process.env.npm_package_version || '1.0.0',
-    description: 'AI-powered speculative fiction generator',
+    name: config.get('app.name'),
+    version: config.get('app.version'),
+    description: config.get('app.description'),
     documentation: '/api/system/docs',
     health: '/api/system/health',
     endpoints: {
@@ -141,7 +136,7 @@ app.use((error, req, res, next) => {
     return res.status(error.output.statusCode).json({
       success: false,
       error: error.output.payload.message,
-      ...(process.env.NODE_ENV === 'development' && { 
+      ...(config.get('env') === 'development' && { 
         stack: error.stack,
         details: error.output.payload.details 
       })
@@ -162,7 +157,7 @@ app.use((error, req, res, next) => {
   res.status(500).json({
     success: false,
     error: 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { 
+    ...(config.get('env') === 'development' && { 
       stack: error.stack 
     })
   });
@@ -200,7 +195,7 @@ const server = app.listen(PORT, () => {
   logger.info({
     message: 'SpecGen API Server started',
     port: PORT,
-    environment: process.env.NODE_ENV || 'development',
+    environment: config.get('env'),
     docs: `http://localhost:${PORT}/api/system/docs`
   });
 });

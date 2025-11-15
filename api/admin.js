@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import boom from '@hapi/boom';
-import dataService from '../lib/data.js';
+import dataService from '../lib/dataService.js';
 import { 
   categorySchema, 
   categoryUpdateSchema,
@@ -104,11 +104,7 @@ router.delete('/categories/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
     const result = await dataService.deleteCategory(id);
-    res.json({ 
-      success: true, 
-      message: `Category '${result.deletedCategory.name}' deleted successfully`,
-      data: result 
-    });
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -126,7 +122,9 @@ router.delete('/categories/:id', async (req, res, next) => {
 router.get('/parameters', async (req, res, next) => {
   try {
     const { categoryId } = parameterFiltersSchema.parse(req.query);
-    const parameters = await dataService.getParameters(categoryId);
+    const parameters = categoryId 
+      ? await dataService.getParametersByCategory(categoryId)
+      : await dataService.getParameters();
     res.json({ success: true, data: parameters });
   } catch (error) {
     next(error);
@@ -200,12 +198,8 @@ router.put('/parameters/:id', async (req, res, next) => {
 router.delete('/parameters/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    const parameter = await dataService.deleteParameter(id);
-    res.json({ 
-      success: true, 
-      message: `Parameter '${parameter.name}' deleted successfully`,
-      data: { deletedParameter: parameter }
-    });
+    const result = await dataService.deleteParameter(id);
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -239,7 +233,13 @@ router.get('/settings', async (req, res, next) => {
 router.put('/settings', async (req, res, next) => {
   try {
     const validatedData = settingsSchema.parse(req.body);
-    const settings = await dataService.updateSettings(validatedData);
+    
+    // Update each setting individually
+    for (const [key, value] of Object.entries(validatedData)) {
+      await dataService.setSetting(key, value);
+    }
+    
+    const settings = await dataService.getSettings();
     res.json({ success: true, data: settings });
   } catch (error) {
     next(error);

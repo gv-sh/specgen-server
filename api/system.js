@@ -6,7 +6,8 @@
 import { Router } from 'express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
-import dataService from '../lib/data.js';
+import dataService from '../lib/dataService.js';
+import config from '../config/index.js';
 
 const router = Router();
 
@@ -24,8 +25,8 @@ router.get('/health', async (req, res) => {
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development',
-    version: process.env.npm_package_version || '0.0.0',
+    environment: config.get('env'),
+    version: config.get('app.version'),
     database: 'unknown',
     ai: 'unknown'
   };
@@ -42,11 +43,11 @@ router.get('/health', async (req, res) => {
 
   try {
     // Test AI service availability
-    if (process.env.OPENAI_API_KEY) {
+    if (config.get('ai.openai.apiKey')) {
       healthStatus.ai = 'configured';
     } else {
       healthStatus.ai = 'not_configured';
-      if (process.env.NODE_ENV !== 'test') {
+      if (config.get('env') !== 'test') {
         healthStatus.status = 'degraded';
       }
     }
@@ -97,8 +98,8 @@ router.get('/database/status', async (req, res, next) => {
     const stats = {
       categories: (await dataService.getCategories()).length,
       parameters: (await dataService.getParameters()).length,
-      generatedContent: (await dataService.getGeneratedContent({ limit: 1 })).pagination.total,
-      availableYears: (await dataService.getAvailableYears()).length
+      generatedContent: (await dataService.getRecentContent(1)).length,
+      settings: Object.keys(await dataService.getSettings()).length
     };
 
     res.json({
@@ -130,8 +131,8 @@ const swaggerOptions = {
     },
     servers: [
       {
-        url: process.env.NODE_ENV === 'production' ? 'https://api.specgen.app' : 'http://localhost:3000',
-        description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
+        url: config.get('env') === 'production' ? 'https://api.specgen.app' : `http://localhost:${config.get('server.port')}`,
+        description: config.get('env') === 'production' ? 'Production server' : 'Development server'
       }
     ],
     tags: [

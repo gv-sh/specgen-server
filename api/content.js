@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import boom from '@hapi/boom';
-import dataService from '../lib/data.js';
+import dataService from '../lib/dataService.js';
 import aiService from '../lib/ai.js';
 import { 
   generationRequestSchema,
@@ -40,12 +40,14 @@ router.post('/generate', async (req, res, next) => {
     // Save to database
     const contentData = {
       title: result.title,
-      type: result.type,
-      content: result.content || null,
-      imageData: result.imageData || null,
-      parameterValues: parameters,
+      content_type: result.type,
+      fiction_content: result.content || null,
+      image_url: result.imageUrl || null,
+      image_prompt: result.imagePrompt || null,
+      prompt_data: parameters,
       metadata: result.metadata,
-      year: year || null
+      generation_time: result.generationTime || 0,
+      word_count: result.wordCount || 0
     };
 
     const savedContent = await dataService.saveGeneratedContent(contentData);
@@ -71,8 +73,11 @@ router.post('/generate', async (req, res, next) => {
 router.get('/', async (req, res, next) => {
   try {
     const filters = contentFiltersSchema.parse(req.query);
-    const result = await dataService.getGeneratedContent(filters);
-    res.json({ success: true, ...result });
+    const limit = parseInt(filters.limit) || 20;
+    const contentType = filters.type || null;
+    
+    const content = await dataService.getRecentContent(limit, contentType);
+    res.json({ success: true, data: content });
   } catch (error) {
     next(error);
   }
@@ -88,42 +93,20 @@ router.get('/', async (req, res, next) => {
 router.get('/summary', async (req, res, next) => {
   try {
     const filters = contentFiltersSchema.parse(req.query);
-    const result = await dataService.getContentSummary(filters);
-    res.json({ success: true, ...result });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * @swagger
- * /api/content/years:
- *   get:
- *     summary: Get all years with content
- *     tags: [Content]
- */
-router.get('/years', async (req, res, next) => {
-  try {
-    const years = await dataService.getAvailableYears();
-    res.json({ success: true, data: years });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * @swagger
- * /api/content/year/{year}:
- *   get:
- *     summary: Get content by year
- *     tags: [Content]
- */
-router.get('/year/:year', async (req, res, next) => {
-  try {
-    const { year } = yearParamSchema.parse(req.params);
-    const filters = { year, ...contentFiltersSchema.parse(req.query) };
-    const result = await dataService.getGeneratedContent(filters);
-    res.json({ success: true, ...result });
+    const limit = parseInt(filters.limit) || 20;
+    const contentType = filters.type || null;
+    
+    // Get content without large fields for summary view
+    const content = await dataService.getRecentContent(limit, contentType);
+    const summary = content.map(item => ({
+      id: item.id,
+      title: item.title,
+      content_type: item.content_type,
+      word_count: item.word_count,
+      created_at: item.created_at
+    }));
+    
+    res.json({ success: true, data: summary });
   } catch (error) {
     next(error);
   }
@@ -139,24 +122,20 @@ router.get('/year/:year', async (req, res, next) => {
 router.get('/:id/image', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    const content = await dataService.getContentById(id);
+    const content = await dataService.getGeneratedContentById(id);
     
-    if (!content) {
-      throw boom.notFound('Content not found');
-    }
-    
-    if (!content.imageData) {
+    if (!content.image_url) {
       throw boom.notFound('Image not found');
     }
 
-    // Set caching headers
-    res.set({
-      'Content-Type': 'image/png',
-      'Cache-Control': 'public, max-age=86400',
-      'ETag': `"${id}"`
+    // Return the image URL instead of binary data
+    res.json({ 
+      success: true, 
+      data: { 
+        imageUrl: content.image_url,
+        imagePrompt: content.image_prompt
+      } 
     });
-    
-    res.send(content.imageData);
   } catch (error) {
     next(error);
   }
@@ -172,11 +151,7 @@ router.get('/:id/image', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    const content = await dataService.getContentById(id);
-    
-    if (!content) {
-      throw boom.notFound(`Content with ID ${id} not found`);
-    }
+    const content = await dataService.getGeneratedContentById(id);
     
     res.json({ success: true, data: content });
   } catch (error) {
@@ -195,8 +170,9 @@ router.put('/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
     const updates = contentUpdateSchema.parse(req.body);
-    const content = await dataService.updateGeneratedContent(id, updates);
-    res.json({ success: true, data: content });
+    
+    // For now, just return not implemented since we don't have update method in DataService
+    throw boom.notImplemented('Content updates not yet implemented');
   } catch (error) {
     next(error);
   }
@@ -212,12 +188,9 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    const content = await dataService.deleteGeneratedContent(id);
-    res.json({ 
-      success: true, 
-      message: `Content '${content.title}' deleted successfully`,
-      data: { deletedContent: content }
-    });
+    
+    // For now, just return not implemented since we don't have delete method in DataService
+    throw boom.notImplemented('Content deletion not yet implemented');
   } catch (error) {
     next(error);
   }

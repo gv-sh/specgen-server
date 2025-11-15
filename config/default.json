@@ -1,0 +1,110 @@
+{
+  "env": "development",
+  "server": {
+    "port": 3000,
+    "host": "localhost",
+    "timeouts": {
+      "gracefulShutdown": 10000,
+      "request": 30000
+    }
+  },
+  "security": {
+    "cors": {
+      "origins": {
+        "development": [
+          "http://localhost:3000", 
+          "http://localhost:3001", 
+          "http://localhost:3002"
+        ],
+        "production": [
+          "https://admin.specgen.app", 
+          "https://app.specgen.app"
+        ]
+      },
+      "credentials": true
+    },
+    "rateLimit": {
+      "windowMs": 900000,
+      "max": 1000
+    },
+    "helmet": {
+      "crossOriginEmbedderPolicy": false,
+      "contentSecurityPolicy": false
+    }
+  },
+  "request": {
+    "bodyParser": {
+      "jsonLimit": "10mb"
+    }
+  },
+  "database": {
+    "type": "sqlite",
+    "sqlite": {
+      "path": "./data/specgen.db",
+      "testPath": "./data/specgen-test.db"
+    },
+    "options": {
+      "connectionTimeout": 5000,
+      "busyTimeout": 3000
+    }
+  },
+  "ai": {
+    "openai": {
+      "apiKey": "",
+      "baseUrl": "https://api.openai.com/v1"
+    },
+    "models": {
+      "fiction": "gpt-4o-mini",
+      "image": "dall-e-3"
+    },
+    "parameters": {
+      "fiction": {
+        "temperature": 0.8,
+        "maxTokens": 1000,
+        "defaultStoryLength": 500,
+        "systemPrompt": "You create engaging stories set in India and the Global South. Write stories that feel real and connected to these places - their people, traditions, history, and daily life. Focus especially on India.\n\nFor each story:\n- Start with familiar places and situations, then imagine how they might change in the future\n- Use the story elements the user gives you as the main building blocks\n- Include real cultural details like festivals, food, family traditions, and local customs\n- Show how technology and change might mix with traditional ways of life\n- Use simple, clear language that anyone can understand\n\nMake your stories:\n- Easy to read and follow\n- Rich with local details (markets, temples, monsoons, family life)\n- Focused on characters people can relate to\n- Imaginative but believable\n- Respectful of local cultures and traditions\n\nAvoid using complex academic words or foreign concepts. Write like you're telling a story to a friend who lives in these places."
+      },
+      "image": {
+        "size": "1024x1024",
+        "quality": "standard",
+        "promptSuffix": "Create a realistic, colorful scene that captures the story's mood and main elements. Show the characters with clear, expressive faces and natural body language that fits their role in the story. Use the background to show the setting and atmosphere of the story. Include warm, vibrant colors inspired by Indian art - golds, deep reds, saffron, and earth tones. Make sure lighting brings out textures and details beautifully. Do not include any text in the image. Let the visual tell the story through colors, people, and setting."
+      }
+    }
+  },
+  "business": {
+    "years": {
+      "min": 1900,
+      "max": 3000
+    },
+    "pagination": {
+      "defaultLimit": 20,
+      "maxLimit": 100,
+      "minLimit": 1
+    },
+    "content": {
+      "defaultType": "fiction",
+      "idRandomMultiplier": 1000
+    }
+  },
+  "logging": {
+    "level": "info",
+    "prettyPrint": true,
+    "colorize": true
+  },
+  "docs": {
+    "swagger": {
+      "title": "SpecGen API",
+      "version": "0.14.0",
+      "description": "API for Speculative Fiction Generator",
+      "servers": {
+        "development": "http://localhost:3000",
+        "production": "https://api.specgen.app"
+      }
+    }
+  },
+  "features": {
+    "enableMetrics": false,
+    "enableCache": false,
+    "enableRateLimit": true
+  }
+}
