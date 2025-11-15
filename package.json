@@ -9,8 +9,6 @@
     "dev": "NODE_ENV=development node --watch app.js",
     "dev:legacy": "NODE_ENV=development nodemon app.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand --config jest.config.js --colors=true --detectOpenHandles",
-    "recreate-db": "node scripts/recreateDatabase.js",
-    "fix-and-test": "node scripts/fixAndTest.js",
     "init-db": "node scripts/initTestData.js",
     "lint": "eslint .",
     "generate-api-spec": "node scripts/generateApiSpec.js"

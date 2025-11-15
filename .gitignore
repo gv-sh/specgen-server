@@ -23,6 +23,7 @@ data/*.json
 # IDE and editor files
 .idea/
 .vscode/
+.claude/
 *.sublime-project
 *.sublime-workspace
 *.swp
@@ -41,11 +42,15 @@ Thumbs.db
 logs
 *.log
 
+# Performance and test results
+performance-results/
+test-results/
+
 # Optional npm cache directory
 .npm
 
 # Optional eslint cache
 .eslintcache
 
-# AI
-CLAUDE.md
+# AI (commented out to keep CLAUDE.md in repo)
+# CLAUDE.md
