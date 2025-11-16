@@ -9,6 +9,14 @@ import boom from '@hapi/boom';
 import { v4 as uuidv4 } from 'uuid';
 import config from './config.js';
 
+// Check if Sharp is available
+let sharp = null;
+try {
+  sharp = (await import('sharp')).default;
+} catch (error) {
+  console.warn('Sharp not available - using URL-only mode:', error.message);
+}
+
 // Visual elements patterns for image generation
 const VISUAL_PATTERNS = {
   characters: [
@@ -115,7 +123,11 @@ class DataService {
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL CHECK(length(title) <= 200),
         fiction_content TEXT NOT NULL CHECK(length(fiction_content) <= 50000),
-        image_url TEXT NOT NULL CHECK(length(image_url) <= 2000),
+        image_blob BLOB,
+        image_thumbnail BLOB,
+        image_format TEXT DEFAULT 'png',
+        image_size_bytes INTEGER DEFAULT 0,
+        thumbnail_size_bytes INTEGER DEFAULT 0,
         image_prompt TEXT CHECK(length(image_prompt) <= 1000),
         prompt_data TEXT,
         metadata TEXT,
@@ -411,13 +423,17 @@ class DataService {
   async saveGeneratedContent(contentData) {
     const id = uuidv4();
     await this.run(
-      `INSERT INTO generated_content (id, title, fiction_content, image_url, image_prompt, prompt_data, metadata, generation_time, word_count, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO generated_content (id, title, fiction_content, image_blob, image_thumbnail, image_format, image_size_bytes, thumbnail_size_bytes, image_prompt, prompt_data, metadata, generation_time, word_count, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         contentData.title,
         contentData.fiction_content,
-        contentData.image_url,
+        contentData.image_blob || null,
+        contentData.image_thumbnail || null,
+        contentData.image_format || 'png',
+        contentData.image_size_bytes || 0,
+        contentData.thumbnail_size_bytes || 0,
         contentData.image_prompt || null,
         JSON.stringify(contentData.prompt_data || {}),
         JSON.stringify(contentData.metadata || {}),
@@ -441,18 +457,52 @@ class DataService {
     };
   }
 
+  async getGeneratedContentForApi(id) {
+    const content = await this.get(
+      'SELECT id, title, fiction_content, image_format, image_size_bytes, thumbnail_size_bytes, image_prompt, prompt_data, metadata, generation_time, word_count, status, created_at, updated_at FROM generated_content WHERE id = ?', 
+      [id]
+    );
+    if (!content) throw boom.notFound(`Content with id ${id} not found`);
+    
+    const result = {
+      ...content,
+      prompt_data: JSON.parse(content.prompt_data),
+      metadata: JSON.parse(content.metadata),
+      created_at: new Date(content.created_at),
+      updated_at: new Date(content.updated_at)
+    };
+
+    // Add image URLs if we have BLOB data stored
+    if (content.image_size_bytes > 0) {
+      result.image_original_url = `/api/images/${id}/original`;
+      result.image_thumbnail_url = `/api/images/${id}/thumbnail`;
+    }
+
+    return result;
+  }
+
   async getRecentContent(limit = 20) {
     const content = await this.query(
-      'SELECT * FROM generated_content ORDER BY created_at DESC LIMIT ?',
+      'SELECT id, title, fiction_content, image_format, image_size_bytes, thumbnail_size_bytes, image_prompt, prompt_data, metadata, generation_time, word_count, status, created_at, updated_at FROM generated_content ORDER BY created_at DESC LIMIT ?',
       [limit]
     );
-    return content.map(item => ({
-      ...item,
-      prompt_data: JSON.parse(item.prompt_data),
-      metadata: JSON.parse(item.metadata),
-      created_at: new Date(item.created_at),
-      updated_at: new Date(item.updated_at)
-    }));
+    return content.map(item => {
+      const result = {
+        ...item,
+        prompt_data: JSON.parse(item.prompt_data),
+        metadata: JSON.parse(item.metadata),
+        created_at: new Date(item.created_at),
+        updated_at: new Date(item.updated_at)
+      };
+
+      // Add image URLs if we have BLOB data stored
+      if (item.image_size_bytes > 0) {
+        result.image_original_url = `/api/images/${item.id}/original`;
+        result.image_thumbnail_url = `/api/images/${item.id}/thumbnail`;
+      }
+
+      return result;
+    });
   }
 
   // Settings
@@ -610,17 +660,39 @@ class AIService {
       );
 
       const imageUrl = response.data.data[0].url;
-
-      return {
-        success: true,
-        imageUrl,
-        imagePrompt: prompt.substring(0, 100) + '...',
-        type: 'image',
-        metadata: {
-          model: aiConfig.model,
-          prompt: prompt.substring(0, 100) + '...'
-        }
-      };
+      
+      // Download and process the image if Sharp is available
+      if (sharp) {
+        const imageData = await this.downloadAndProcessImage(imageUrl);
+        return {
+          success: true,
+          imageBlob: imageData.original,
+          imageThumbnail: imageData.thumbnail,
+          imageFormat: imageData.format,
+          imageSizeBytes: imageData.originalSize,
+          thumbnailSizeBytes: imageData.thumbnailSize,
+          imagePrompt: prompt.substring(0, 100) + '...',
+          type: 'image',
+          metadata: {
+            model: aiConfig.model,
+            prompt: prompt.substring(0, 100) + '...',
+            originalSize: imageData.originalSize,
+            thumbnailSize: imageData.thumbnailSize
+          }
+        };
+      } else {
+        // Fallback to URL mode when Sharp is not available
+        return {
+          success: true,
+          imageUrl: imageUrl, // Keep for backward compatibility
+          imagePrompt: prompt.substring(0, 100) + '...',
+          type: 'image',
+          metadata: {
+            model: aiConfig.model,
+            prompt: prompt.substring(0, 100) + '...'
+          }
+        };
+      }
     } catch (error) {
       throw boom.internal('Image generation failed', error);
     }
@@ -633,11 +705,11 @@ class AIService {
     const imageResult = await this.generateImage(parameters, year, fictionResult.content);
     if (!imageResult.success) return imageResult;
 
-    return {
+    // Handle both BLOB and URL responses
+    const result = {
       success: true,
       title: fictionResult.title,
       content: fictionResult.content,
-      imageUrl: imageResult.imageUrl,
       imagePrompt: imageResult.imagePrompt,
       wordCount: fictionResult.wordCount,
       metadata: {
@@ -645,6 +717,20 @@ class AIService {
         image: imageResult.metadata
       }
     };
+
+    // Add BLOB data if available (Sharp working)
+    if (imageResult.imageBlob) {
+      result.imageBlob = imageResult.imageBlob;
+      result.imageThumbnail = imageResult.imageThumbnail;
+      result.imageFormat = imageResult.imageFormat;
+      result.imageSizeBytes = imageResult.imageSizeBytes;
+      result.thumbnailSizeBytes = imageResult.thumbnailSizeBytes;
+    } else {
+      // Fallback to URL mode
+      result.imageUrl = imageResult.imageUrl;
+    }
+
+    return result;
   }
 
   buildFictionPrompt(parameters, year) {
@@ -700,6 +786,35 @@ class AIService {
     });
     
     return [...new Set(elements)].slice(0, 5);
+  }
+
+  async downloadAndProcessImage(imageUrl) {
+    try {
+      // Download the image from DALL-E URL
+      const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+      const originalBuffer = Buffer.from(response.data);
+      
+      // Process with Sharp to generate thumbnail
+      const thumbnailBuffer = await sharp(originalBuffer)
+        .resize(150, 150, { fit: 'cover' })
+        .png()
+        .toBuffer();
+      
+      // Convert original to PNG for consistency
+      const processedOriginal = await sharp(originalBuffer)
+        .png()
+        .toBuffer();
+      
+      return {
+        original: processedOriginal,
+        thumbnail: thumbnailBuffer,
+        format: 'png',
+        originalSize: processedOriginal.length,
+        thumbnailSize: thumbnailBuffer.length
+      };
+    } catch (error) {
+      throw boom.internal('Failed to download and process image', error);
+    }
   }
 
   extractTitle(content) {

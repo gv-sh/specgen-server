@@ -36,7 +36,11 @@ CREATE TABLE generated_content (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL CHECK(length(title) <= 200),
   fiction_content TEXT NOT NULL CHECK(length(fiction_content) <= 50000),
-  image_url TEXT NOT NULL CHECK(length(image_url) <= 2000),
+  image_blob BLOB,
+  image_thumbnail BLOB,
+  image_format TEXT DEFAULT 'png',
+  image_size_bytes INTEGER DEFAULT 0,
+  thumbnail_size_bytes INTEGER DEFAULT 0,
   image_prompt TEXT CHECK(length(image_prompt) <= 1000),
   prompt_data TEXT, -- JSON object containing all generation parameters
   metadata TEXT, -- JSON object for additional metadata

@@ -677,6 +677,49 @@ app.get('/api/admin/parameters', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/parameters/{id}:
+ *   get:
+ *     summary: Get parameter by ID
+ *     tags: [Admin]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Parameter ID
+ *         schema:
+ *           type: string
+ *         example: "sci-fi-tech-level"
+ *     responses:
+ *       200:
+ *         description: Parameter found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "sci-fi-tech-level"
+ *                     name:
+ *                       type: string
+ *                       example: "Technology Level"
+ *                     type:
+ *                       type: string
+ *                       example: "select"
+ *                     parameter_values:
+ *                       type: array
+ *                       example: [{"label": "Basic", "id": "basic"}, {"label": "Advanced AI", "id": "advanced-ai"}]
+ *       404:
+ *         description: Parameter not found
+ */
 app.get('/api/admin/parameters/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
@@ -697,6 +740,58 @@ app.post('/api/admin/parameters', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/parameters/{id}:
+ *   put:
+ *     summary: Update a parameter
+ *     tags: [Admin]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Parameter ID to update
+ *         schema:
+ *           type: string
+ *         example: "sci-fi-tech-level"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 maxLength: 100
+ *               description:
+ *                 type: string
+ *                 maxLength: 500
+ *               visibility:
+ *                 type: string
+ *                 enum: [Basic, Advanced, Hide]
+ *               parameter_values:
+ *                 type: array
+ *                 description: For select type parameters
+ *           examples:
+ *             update-values:
+ *               summary: Update Parameter Values
+ *               value:
+ *                 parameter_values: [
+ *                   {"label": "Quantum Computing", "id": "quantum"},
+ *                   {"label": "Neural Networks", "id": "neural"},
+ *                   {"label": "Nano Technology", "id": "nano"}
+ *                 ]
+ *             change-visibility:
+ *               summary: Change Visibility
+ *               value:
+ *                 visibility: "Advanced"
+ *     responses:
+ *       200:
+ *         description: Parameter updated successfully
+ *       404:
+ *         description: Parameter not found
+ */
 app.put('/api/admin/parameters/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
@@ -708,6 +803,37 @@ app.put('/api/admin/parameters/:id', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/parameters/{id}:
+ *   delete:
+ *     summary: Delete a parameter
+ *     tags: [Admin]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Parameter ID to delete
+ *         schema:
+ *           type: string
+ *         example: "old-parameter-id"
+ *     responses:
+ *       200:
+ *         description: Parameter deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Parameter deleted successfully"
+ *       404:
+ *         description: Parameter not found
+ */
 app.delete('/api/admin/parameters/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
@@ -890,9 +1016,12 @@ app.put('/api/admin/settings', async (req, res, next) => {
  *                     fiction_content:
  *                       type: string
  *                       example: "In the year 2150, Dr. Sarah Chen discovered..."
- *                     image_url:
+ *                     image_original_url:
  *                       type: string
- *                       example: "https://oaidalleapiprodscus.blob.core.windows.net/..."
+ *                       example: "/api/images/uuid-string/original"
+ *                     image_thumbnail_url:
+ *                       type: string
+ *                       example: "/api/images/uuid-string/thumbnail"
  *                     image_prompt:
  *                       type: string
  *                       example: "Futuristic space station with advanced AI..."
@@ -930,7 +1059,11 @@ app.post('/api/generate', async (req, res, next) => {
     const contentData = {
       title: result.title,
       fiction_content: result.content,
-      image_url: result.imageUrl,
+      image_blob: result.imageBlob || null,
+      image_thumbnail: result.imageThumbnail || null,
+      image_format: result.imageFormat || 'png',
+      image_size_bytes: result.imageSizeBytes || 0,
+      thumbnail_size_bytes: result.thumbnailSizeBytes || 0,
       image_prompt: result.imagePrompt,
       prompt_data: parameters,
       metadata: result.metadata,
@@ -939,10 +1072,11 @@ app.post('/api/generate', async (req, res, next) => {
     };
 
     const savedContent = await dataService.saveGeneratedContent(contentData);
+    const apiContent = await dataService.getGeneratedContentForApi(savedContent.id);
     
     res.status(201).json({ 
       success: true, 
-      data: savedContent
+      data: apiContent
     });
   } catch (error) {
     next(error);
@@ -990,9 +1124,12 @@ app.post('/api/generate', async (req, res, next) => {
  *                       fiction_content:
  *                         type: string
  *                         example: "In the year 2150, Dr. Sarah Chen discovered..."
- *                       image_url:
+ *                       image_original_url:
  *                         type: string
- *                         example: "https://oaidalleapiprodscus.blob.core.windows.net/..."
+ *                         example: "/api/images/uuid-string/original"
+ *                       image_thumbnail_url:
+ *                         type: string
+ *                         example: "/api/images/uuid-string/thumbnail"
  *                       word_count:
  *                         type: number
  *                         example: 245
@@ -1025,6 +1162,36 @@ app.get('/api/content', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/content/summary:
+ *   get:
+ *     summary: Get content generation summary statistics
+ *     tags: [Content]
+ *     responses:
+ *       200:
+ *         description: Content summary statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total_content:
+ *                       type: number
+ *                       example: 42
+ *                     recent_content:
+ *                       type: number
+ *                       example: 5
+ *                     avg_word_count:
+ *                       type: number
+ *                       example: 245
+ */
 app.get('/api/content/summary', async (req, res, next) => {
   try {
     const filters = contentFiltersSchema.parse(req.query);
@@ -1046,10 +1213,154 @@ app.get('/api/content/summary', async (req, res, next) => {
   }
 });
 
-app.get('/api/content/:id', async (req, res, next) => {
+// Image serving endpoints
+/**
+ * @swagger
+ * /api/images/{id}/original:
+ *   get:
+ *     summary: Get original image (1024x1024)
+ *     tags: [Content]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Content ID
+ *         schema:
+ *           type: string
+ *         example: "uuid-string"
+ *     responses:
+ *       200:
+ *         description: Original image
+ *         content:
+ *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Image not found
+ */
+app.get('/api/images/:id/original', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
     const content = await dataService.getGeneratedContentById(id);
+    
+    if (!content.image_blob) {
+      return res.status(404).json({ success: false, error: 'Image not found' });
+    }
+    
+    res.set({
+      'Content-Type': `image/${content.image_format || 'png'}`,
+      'Content-Length': content.image_size_bytes,
+      'Cache-Control': 'public, max-age=31536000', // 1 year cache
+      'ETag': `"${id}-original"`
+    });
+    
+    res.send(content.image_blob);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /api/images/{id}/thumbnail:
+ *   get:
+ *     summary: Get thumbnail image (150x150)
+ *     tags: [Content]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Content ID
+ *         schema:
+ *           type: string
+ *         example: "uuid-string"
+ *     responses:
+ *       200:
+ *         description: Thumbnail image
+ *         content:
+ *           image/png:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Image not found
+ */
+app.get('/api/images/:id/thumbnail', async (req, res, next) => {
+  try {
+    const { id } = idParamSchema.parse(req.params);
+    const content = await dataService.getGeneratedContentById(id);
+    
+    if (!content.image_thumbnail) {
+      return res.status(404).json({ success: false, error: 'Thumbnail not found' });
+    }
+    
+    res.set({
+      'Content-Type': 'image/png',
+      'Content-Length': content.thumbnail_size_bytes,
+      'Cache-Control': 'public, max-age=31536000', // 1 year cache
+      'ETag': `"${id}-thumbnail"`
+    });
+    
+    res.send(content.image_thumbnail);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /api/content/{id}:
+ *   get:
+ *     summary: Get specific generated content by ID
+ *     tags: [Content]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Content ID
+ *         schema:
+ *           type: string
+ *         example: "uuid-string"
+ *     responses:
+ *       200:
+ *         description: Content found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "uuid-string"
+ *                     title:
+ *                       type: string
+ *                       example: "The Quantum Paradox"
+ *                     fiction_content:
+ *                       type: string
+ *                       example: "In the year 2150, Dr. Sarah Chen discovered..."
+ *                     image_original_url:
+ *                       type: string
+ *                       example: "/api/images/uuid-string/original"
+ *                     image_thumbnail_url:
+ *                       type: string
+ *                       example: "/api/images/uuid-string/thumbnail"
+ *                     word_count:
+ *                       type: number
+ *                       example: 245
+ *       404:
+ *         description: Content not found
+ */
+app.get('/api/content/:id', async (req, res, next) => {
+  try {
+    const { id } = idParamSchema.parse(req.params);
+    const content = await dataService.getGeneratedContentForApi(id);
     res.json({ success: true, data: content });
   } catch (error) {
     next(error);
@@ -1077,6 +1388,45 @@ app.get('/api/content/:id/image', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/content/{id}:
+ *   put:
+ *     summary: Update generated content (Not yet implemented)
+ *     tags: [Content]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Content ID to update
+ *         schema:
+ *           type: string
+ *         example: "uuid-string"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: "Updated Title"
+ *     responses:
+ *       501:
+ *         description: Not yet implemented
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Content updates are not yet implemented"
+ */
 app.put('/api/content/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
@@ -1087,6 +1437,35 @@ app.put('/api/content/:id', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/content/{id}:
+ *   delete:
+ *     summary: Delete generated content (Not yet implemented)
+ *     tags: [Content]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Content ID to delete
+ *         schema:
+ *           type: string
+ *         example: "uuid-string"
+ *     responses:
+ *       501:
+ *         description: Not yet implemented
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Content deletion is not yet implemented"
+ */
 app.delete('/api/content/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
@@ -1146,6 +1525,29 @@ app.get('/api/system/health', async (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /api/system/database/init:
+ *   post:
+ *     summary: Initialize database with schema and default data
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Database initialized successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Database initialized successfully"
+ *       500:
+ *         description: Database initialization failed
+ */
 app.post('/api/system/database/init', async (req, res, next) => {
   try {
     await dataService.init();
@@ -1158,6 +1560,42 @@ app.post('/api/system/database/init', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/system/database/status:
+ *   get:
+ *     summary: Get database connection status and statistics
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: Database status and statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: string
+ *                       example: "connected"
+ *                     statistics:
+ *                       type: object
+ *                       properties:
+ *                         categories:
+ *                           type: number
+ *                           example: 5
+ *                         parameters:
+ *                           type: number
+ *                           example: 23
+ *                         generated_content:
+ *                           type: number
+ *                           example: 42
+ */
 app.get('/api/system/database/status', async (req, res, next) => {
   try {
     await dataService.init();
@@ -1189,6 +1627,21 @@ app.get('/api/system/docs', swaggerUi.setup(swaggerSpec, {
   customSiteTitle: 'SpecGen API Documentation'
 }));
 
+/**
+ * @swagger
+ * /api/system/docs.json:
+ *   get:
+ *     summary: Get OpenAPI specification as JSON
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: OpenAPI specification
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               description: Complete OpenAPI 3.0 specification for the API
+ */
 app.get('/api/system/docs.json', (req, res) => {
   res.json(swaggerSpec);
 });
