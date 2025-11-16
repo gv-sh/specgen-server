@@ -384,7 +384,13 @@ app.put('/api/admin/settings', async (req, res, next) => {
     const validatedData = settingsSchema.parse(req.body);
     
     for (const [key, value] of Object.entries(validatedData)) {
-      await dataService.setSetting(key, value);
+      // Auto-detect data type
+      let dataType = 'string';
+      if (typeof value === 'number') dataType = 'number';
+      else if (typeof value === 'boolean') dataType = 'boolean';
+      else if (typeof value === 'object') dataType = 'json';
+      
+      await dataService.setSetting(key, value, dataType);
     }
     
     const settings = await dataService.getSettings();
@@ -628,24 +634,96 @@ app.get('/api/system/docs.json', (req, res) => {
 // ==================== LEGACY ROUTE MAPPINGS ====================
 
 // Legacy route mappings for backward compatibility
-app.use('/api/categories', (req, res, next) => {
-  req.url = req.url.replace('/api/categories', '/api/admin/categories');
-  app._router.handle(req, res, next);
+app.all('/api/categories*', async (req, res, next) => {
+  if (req.method === 'GET' && req.path === '/api/categories') {
+    try {
+      const categories = await dataService.getCategories();
+      res.json({ success: true, data: categories });
+    } catch (error) {
+      next(error);
+    }
+  } else {
+    next();
+  }
 });
 
-app.use('/api/parameters', (req, res, next) => {
-  req.url = req.url.replace('/api/parameters', '/api/admin/parameters');
-  app._router.handle(req, res, next);
+app.all('/api/parameters*', async (req, res, next) => {
+  if (req.method === 'GET' && req.path === '/api/parameters') {
+    try {
+      const filters = req.query.categoryId ? { categoryId: req.query.categoryId } : {};
+      const parameters = filters.categoryId 
+        ? await dataService.getParametersByCategory(filters.categoryId)
+        : await dataService.getParameters();
+      res.json({ success: true, data: parameters });
+    } catch (error) {
+      next(error);
+    }
+  } else {
+    next();
+  }
 });
 
-app.use('/api/settings', (req, res, next) => {
-  req.url = req.url.replace('/api/settings', '/api/admin/settings');
-  app._router.handle(req, res, next);
+app.all('/api/settings*', async (req, res, next) => {
+  if (req.method === 'GET' && req.path === '/api/settings') {
+    try {
+      const settings = await dataService.getSettings();
+      res.json({ success: true, data: settings });
+    } catch (error) {
+      next(error);
+    }
+  } else {
+    next();
+  }
 });
 
-app.use('/api/health', (req, res, next) => {
-  req.url = req.url.replace('/api/health', '/api/system/health');
-  app._router.handle(req, res, next);
+app.all('/api/health*', async (req, res, next) => {
+  if (req.method === 'GET' && req.path === '/api/health') {
+    try {
+      // Duplicate health check logic
+      const healthStatus = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        environment: config.get('env'),
+        version: config.get('app.version'),
+        database: 'unknown',
+        ai: 'unknown'
+      };
+
+      try {
+        await dataService.init();
+        await dataService.getCategories();
+        healthStatus.database = 'connected';
+      } catch (error) {
+        healthStatus.database = 'disconnected';
+        healthStatus.status = 'degraded';
+      }
+
+      try {
+        if (config.get('ai.openai.apiKey')) {
+          healthStatus.ai = 'configured';
+        } else {
+          healthStatus.ai = 'not_configured';
+          if (!config.isTest()) {
+            healthStatus.status = 'degraded';
+          }
+        }
+      } catch (error) {
+        healthStatus.ai = 'error';
+        healthStatus.status = 'degraded';
+      }
+
+      const statusCode = healthStatus.status === 'ok' ? 200 : 503;
+      res.status(statusCode).json({
+        success: healthStatus.status === 'ok',
+        data: healthStatus
+      });
+    } catch (error) {
+      next(error);
+    }
+  } else {
+    next();
+  }
 });
 
 // ==================== ERROR HANDLING ====================
