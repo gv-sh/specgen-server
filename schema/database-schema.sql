@@ -31,18 +31,17 @@ CREATE TABLE parameters (
   FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
--- Generated content table: All user-generated stories, images, and combined content
+-- Generated content table: All user-generated combined stories and images
 CREATE TABLE generated_content (
   id TEXT PRIMARY KEY,
-  title TEXT NOT NULL,
-  content_type TEXT NOT NULL CHECK(content_type IN ('fiction', 'image', 'combined')),
-  fiction_content TEXT,
-  image_url TEXT,
-  image_prompt TEXT,
+  title TEXT NOT NULL CHECK(length(title) <= 200),
+  fiction_content TEXT NOT NULL CHECK(length(fiction_content) <= 50000),
+  image_url TEXT NOT NULL CHECK(length(image_url) <= 2000),
+  image_prompt TEXT CHECK(length(image_prompt) <= 1000),
   prompt_data TEXT, -- JSON object containing all generation parameters
   metadata TEXT, -- JSON object for additional metadata
-  generation_time INTEGER DEFAULT 0, -- Time taken in milliseconds
-  word_count INTEGER DEFAULT 0,
+  generation_time INTEGER DEFAULT 0 CHECK(generation_time >= 0), -- Time taken in milliseconds
+  word_count INTEGER DEFAULT 0 CHECK(word_count >= 0),
   status TEXT DEFAULT 'completed' CHECK(status IN ('pending', 'generating', 'completed', 'failed')),
   error_message TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -97,10 +96,10 @@ CREATE INDEX idx_parameters_type ON parameters(type);
 CREATE INDEX idx_parameters_visibility ON parameters(visibility);
 CREATE INDEX idx_parameters_sort_order ON parameters(sort_order);
 
-CREATE INDEX idx_content_type ON generated_content(content_type);
 CREATE INDEX idx_content_created_at ON generated_content(created_at DESC);
 CREATE INDEX idx_content_status ON generated_content(status);
 CREATE INDEX idx_content_word_count ON generated_content(word_count);
+CREATE INDEX idx_composite_category_params ON parameters(category_id, visibility, sort_order);
 
 CREATE INDEX idx_settings_type ON settings(data_type);
 CREATE INDEX idx_settings_system ON settings(is_system);

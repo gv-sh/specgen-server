@@ -69,9 +69,8 @@ async function initTestDatabase() {
     CREATE TABLE IF NOT EXISTS generated_content (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
-      content_type TEXT NOT NULL CHECK(content_type IN ('fiction', 'image', 'combined')),
-      fiction_content TEXT,
-      image_url TEXT,
+      fiction_content TEXT NOT NULL,
+      image_url TEXT NOT NULL,
       image_prompt TEXT,
       prompt_data TEXT,
       metadata TEXT,
@@ -506,7 +505,6 @@ describe('SpecGen Server - Content Management', () => {
     const response = await request(app)
       .post('/api/generate')
       .send({
-        type: 'fiction',
         parameters: { category: 'science-fiction' },
         year: 2150
       });
@@ -520,7 +518,6 @@ describe('SpecGen Server - Content Management', () => {
     const response = await request(app)
       .post('/api/generate')
       .send({
-        type: 'invalid-type',
         parameters: 'not-an-object'
       });
     

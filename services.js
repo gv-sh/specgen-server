@@ -113,15 +113,14 @@ class DataService {
     await this.run(`
       CREATE TABLE generated_content (
         id TEXT PRIMARY KEY,
-        title TEXT NOT NULL,
-        content_type TEXT NOT NULL CHECK(content_type IN ('fiction', 'image', 'combined')),
-        fiction_content TEXT,
-        image_url TEXT,
-        image_prompt TEXT,
+        title TEXT NOT NULL CHECK(length(title) <= 200),
+        fiction_content TEXT NOT NULL CHECK(length(fiction_content) <= 50000),
+        image_url TEXT NOT NULL CHECK(length(image_url) <= 2000),
+        image_prompt TEXT CHECK(length(image_prompt) <= 1000),
         prompt_data TEXT,
         metadata TEXT,
-        generation_time INTEGER DEFAULT 0,
-        word_count INTEGER DEFAULT 0,
+        generation_time INTEGER DEFAULT 0 CHECK(generation_time >= 0),
+        word_count INTEGER DEFAULT 0 CHECK(word_count >= 0),
         status TEXT DEFAULT 'completed' CHECK(status IN ('pending', 'generating', 'completed', 'failed')),
         error_message TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -141,13 +140,15 @@ class DataService {
       )
     `);
 
-    // Create indexes
+    // Create indexes for performance
     await this.run('CREATE INDEX idx_categories_visibility ON categories(visibility)');
     await this.run('CREATE INDEX idx_categories_sort_order ON categories(sort_order)');
     await this.run('CREATE INDEX idx_parameters_category_id ON parameters(category_id)');
     await this.run('CREATE INDEX idx_parameters_visibility ON parameters(visibility)');
-    await this.run('CREATE INDEX idx_content_type ON generated_content(content_type)');
     await this.run('CREATE INDEX idx_content_created_at ON generated_content(created_at DESC)');
+    await this.run('CREATE INDEX idx_content_status ON generated_content(status)');
+    await this.run('CREATE INDEX idx_content_word_count ON generated_content(word_count)');
+    await this.run('CREATE INDEX idx_composite_category_params ON parameters(category_id, visibility, sort_order)');
 
     // Insert default settings
     await this.run(`
@@ -410,14 +411,13 @@ class DataService {
   async saveGeneratedContent(contentData) {
     const id = uuidv4();
     await this.run(
-      `INSERT INTO generated_content (id, title, content_type, fiction_content, image_url, image_prompt, prompt_data, metadata, generation_time, word_count, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO generated_content (id, title, fiction_content, image_url, image_prompt, prompt_data, metadata, generation_time, word_count, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         contentData.title,
-        contentData.content_type,
-        contentData.fiction_content || null,
-        contentData.image_url || null,
+        contentData.fiction_content,
+        contentData.image_url,
         contentData.image_prompt || null,
         JSON.stringify(contentData.prompt_data || {}),
         JSON.stringify(contentData.metadata || {}),
@@ -441,19 +441,11 @@ class DataService {
     };
   }
 
-  async getRecentContent(limit = 20, contentType = null) {
-    let sql = 'SELECT * FROM generated_content';
-    let params = [];
-    
-    if (contentType) {
-      sql += ' WHERE content_type = ?';
-      params.push(contentType);
-    }
-    
-    sql += ' ORDER BY created_at DESC LIMIT ?';
-    params.push(limit);
-    
-    const content = await this.query(sql, params);
+  async getRecentContent(limit = 20) {
+    const content = await this.query(
+      'SELECT * FROM generated_content ORDER BY created_at DESC LIMIT ?',
+      [limit]
+    );
     return content.map(item => ({
       ...item,
       prompt_data: JSON.parse(item.prompt_data),
@@ -553,17 +545,12 @@ class AIService {
     this.isConfigured = Boolean(this.apiKey);
   }
 
-  async generate(type, parameters, year = null) {
+  async generate(parameters, year = null) {
     if (!this.isConfigured) {
       throw boom.internal('OpenAI API key not configured');
     }
 
-    switch (type) {
-      case 'fiction': return this.generateFiction(parameters, year);
-      case 'image': return this.generateImage(parameters, year);
-      case 'combined': return this.generateCombined(parameters, year);
-      default: throw boom.badRequest(`Unsupported generation type: ${type}`);
-    }
+    return this.generateCombined(parameters, year);
   }
 
   async generateFiction(parameters, year) {
@@ -653,7 +640,6 @@ class AIService {
       imageUrl: imageResult.imageUrl,
       imagePrompt: imageResult.imagePrompt,
       wordCount: fictionResult.wordCount,
-      type: 'combined',
       metadata: {
         fiction: fictionResult.metadata,
         image: imageResult.metadata

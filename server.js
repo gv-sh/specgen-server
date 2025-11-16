@@ -75,7 +75,6 @@ const parameterUpdateSchema = parameterSchema.partial().omit({ category_id: true
 
 // Content generation schemas
 const generationRequestSchema = z.object({
-  type: z.enum(['fiction', 'image', 'combined']).default('fiction'),
   parameters: z.record(z.any()).default({}),
   year: z.number().int().min(config.get('validation.yearRange.min')).max(config.get('validation.yearRange.max')).nullable().optional()
 });
@@ -87,8 +86,7 @@ const contentUpdateSchema = z.object({
 
 // Query schemas
 const contentFiltersSchema = z.object({
-  limit: z.string().transform(val => parseInt(val)).pipe(z.number().min(1).max(config.get('validation.maxPageSize'))).default('20'),
-  type: z.enum(['fiction', 'image', 'combined']).optional()
+  limit: z.string().transform(val => parseInt(val)).pipe(z.number().min(1).max(config.get('validation.maxPageSize'))).default('20')
 });
 
 const parameterFiltersSchema = z.object({
@@ -215,7 +213,40 @@ app.get('/', (req, res) => {
  *     tags: [Admin]
  *     responses:
  *       200:
- *         description: Success
+ *         description: List of all visible categories
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "science-fiction"
+ *                       name:
+ *                         type: string
+ *                         example: "Science Fiction"
+ *                       description:
+ *                         type: string
+ *                         example: "Futuristic stories with advanced technology"
+ *                       visibility:
+ *                         type: string
+ *                         enum: [Show, Hide]
+ *                         example: "Show"
+ *                       year:
+ *                         type: number
+ *                         nullable: true
+ *                         example: 2150
+ *                       sort_order:
+ *                         type: number
+ *                         example: 0
  */
 app.get('/api/admin/categories', async (req, res, next) => {
   try {
@@ -236,8 +267,53 @@ app.get('/api/admin/categories', async (req, res, next) => {
  *       - name: id
  *         in: path
  *         required: true
+ *         description: Category ID (kebab-case format)
  *         schema:
  *           type: string
+ *         example: "science-fiction"
+ *     responses:
+ *       200:
+ *         description: Category found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "science-fiction"
+ *                     name:
+ *                       type: string
+ *                       example: "Science Fiction"
+ *                     description:
+ *                       type: string
+ *                       example: "Futuristic stories with advanced technology"
+ *                     visibility:
+ *                       type: string
+ *                       example: "Show"
+ *                     year:
+ *                       type: number
+ *                       nullable: true
+ *                       example: 2150
+ *       404:
+ *         description: Category not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Category with id science-fiction not found"
  */
 app.get('/api/admin/categories/:id', async (req, res, next) => {
   try {
@@ -255,6 +331,82 @@ app.get('/api/admin/categories/:id', async (req, res, next) => {
  *   post:
  *     summary: Create a new category
  *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 maxLength: 100
+ *                 description: Category name
+ *               description:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Category description
+ *               visibility:
+ *                 type: string
+ *                 enum: [Show, Hide]
+ *                 default: Show
+ *               year:
+ *                 type: number
+ *                 nullable: true
+ *                 minimum: 1000
+ *                 maximum: 9999
+ *                 description: Optional year setting
+ *           examples:
+ *             cyberpunk:
+ *               summary: Cyberpunk Category
+ *               value:
+ *                 name: "Cyberpunk"
+ *                 description: "High tech, low life dystopian futures"
+ *                 year: 2077
+ *             space-opera:
+ *               summary: Space Opera Category
+ *               value:
+ *                 name: "Space Opera"
+ *                 description: "Epic adventures across the galaxy"
+ *                 visibility: "Show"
+ *     responses:
+ *       201:
+ *         description: Category created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "cyberpunk"
+ *                     name:
+ *                       type: string
+ *                       example: "Cyberpunk"
+ *                     description:
+ *                       type: string
+ *                       example: "High tech, low life dystopian futures"
+ *       400:
+ *         description: Validation failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Validation failed"
  */
 app.post('/api/admin/categories', async (req, res, next) => {
   try {
@@ -272,6 +424,64 @@ app.post('/api/admin/categories', async (req, res, next) => {
  *   put:
  *     summary: Update a category
  *     tags: [Admin]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Category ID to update
+ *         schema:
+ *           type: string
+ *         example: "science-fiction"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 maxLength: 100
+ *               description:
+ *                 type: string
+ *                 maxLength: 500
+ *               visibility:
+ *                 type: string
+ *                 enum: [Show, Hide]
+ *               year:
+ *                 type: number
+ *                 nullable: true
+ *           examples:
+ *             update-description:
+ *               summary: Update Description
+ *               value:
+ *                 description: "Updated description for science fiction stories"
+ *             change-year:
+ *               summary: Change Year Setting
+ *               value:
+ *                 year: 2200
+ *             hide-category:
+ *               summary: Hide Category
+ *               value:
+ *                 visibility: "Hide"
+ *     responses:
+ *       200:
+ *         description: Category updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   description: Updated category object
+ *       404:
+ *         description: Category not found
+ *       400:
+ *         description: Validation failed
  */
 app.put('/api/admin/categories/:id', async (req, res, next) => {
   try {
@@ -290,6 +500,41 @@ app.put('/api/admin/categories/:id', async (req, res, next) => {
  *   delete:
  *     summary: Delete category and its parameters
  *     tags: [Admin]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Category ID to delete
+ *         schema:
+ *           type: string
+ *         example: "cyberpunk"
+ *     responses:
+ *       200:
+ *         description: Category deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Category deleted successfully"
+ *       404:
+ *         description: Category not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Category with id cyberpunk not found"
  */
 app.delete('/api/admin/categories/:id', async (req, res, next) => {
   try {
@@ -308,6 +553,117 @@ app.delete('/api/admin/categories/:id', async (req, res, next) => {
  *   get:
  *     summary: Get all parameters or filter by categoryId
  *     tags: [Admin]
+ *     parameters:
+ *       - name: categoryId
+ *         in: query
+ *         description: Filter parameters by category ID
+ *         schema:
+ *           type: string
+ *         example: "science-fiction"
+ *     responses:
+ *       200:
+ *         description: List of parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "sci-fi-tech-level"
+ *                       name:
+ *                         type: string
+ *                         example: "Technology Level"
+ *                       type:
+ *                         type: string
+ *                         enum: [select, text, number, boolean, range]
+ *                         example: "select"
+ *                       parameter_values:
+ *                         type: array
+ *                         example: [{"label": "Basic", "id": "basic"}, {"label": "Advanced AI", "id": "advanced-ai"}]
+ *                       required:
+ *                         type: boolean
+ *                         example: false
+ *   post:
+ *     summary: Create a new parameter
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - type
+ *               - category_id
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 maxLength: 100
+ *               type:
+ *                 type: string
+ *                 enum: [select, text, number, boolean, range]
+ *               category_id:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *                 maxLength: 500
+ *               visibility:
+ *                 type: string
+ *                 enum: [Basic, Advanced, Hide]
+ *                 default: Basic
+ *               required:
+ *                 type: boolean
+ *                 default: false
+ *               parameter_values:
+ *                 type: array
+ *                 description: For select type parameters
+ *               parameter_config:
+ *                 type: object
+ *                 description: Additional configuration (min/max for numbers, etc.)
+ *           examples:
+ *             select-parameter:
+ *               summary: Dropdown Selection Parameter
+ *               value:
+ *                 name: "Character Type"
+ *                 type: "select"
+ *                 category_id: "fantasy"
+ *                 description: "Main character archetype"
+ *                 parameter_values: [
+ *                   {"label": "Wizard", "id": "wizard"},
+ *                   {"label": "Warrior", "id": "warrior"},
+ *                   {"label": "Rogue", "id": "rogue"}
+ *                 ]
+ *             number-parameter:
+ *               summary: Number Range Parameter
+ *               value:
+ *                 name: "Character Count"
+ *                 type: "number"
+ *                 category_id: "general"
+ *                 description: "Number of main characters"
+ *                 parameter_config: {"min": 1, "max": 10, "step": 1}
+ *             text-parameter:
+ *               summary: Text Input Parameter
+ *               value:
+ *                 name: "Setting Description"
+ *                 type: "text"
+ *                 category_id: "custom"
+ *                 description: "Custom setting description"
+ *                 required: false
+ *     responses:
+ *       201:
+ *         description: Parameter created successfully
+ *       400:
+ *         description: Validation failed
  */
 app.get('/api/admin/parameters', async (req, res, next) => {
   try {
@@ -369,6 +725,68 @@ app.delete('/api/admin/parameters/:id', async (req, res, next) => {
  *   get:
  *     summary: Get all settings
  *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: System settings
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   example:
+ *                     app_version: "2.0.0"
+ *                     max_generations_per_session: 50
+ *                     enable_image_generation: true
+ *                     rate_limit_per_minute: 10
+ *   put:
+ *     summary: Update system settings
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: true
+ *           examples:
+ *             rate-limits:
+ *               summary: Update Rate Limits
+ *               value:
+ *                 max_generations_per_session: 25
+ *                 rate_limit_per_minute: 5
+ *             features:
+ *               summary: Toggle Features
+ *               value:
+ *                 enable_image_generation: false
+ *                 maintenance_mode: true
+ *             new-setting:
+ *               summary: Add New Setting
+ *               value:
+ *                 custom_prompt_prefix: "Generate a story about"
+ *                 max_story_length: 2000
+ *     responses:
+ *       200:
+ *         description: Settings updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   description: Updated settings object
+ *       400:
+ *         description: Invalid setting values
+ *       500:
+ *         description: Server error updating settings
  */
 app.get('/api/admin/settings', async (req, res, next) => {
   try {
@@ -406,15 +824,104 @@ app.put('/api/admin/settings', async (req, res, next) => {
  * @swagger
  * /api/generate:
  *   post:
- *     summary: Generate new content (fiction, image, or combined)
+ *     summary: Generate combined fiction and image content
  *     tags: [Content]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               parameters:
+ *                 type: object
+ *                 description: Generation parameters based on categories and settings
+ *               year:
+ *                 type: number
+ *                 description: Optional year setting for the story
+ *                 example: 2150
+ *           examples:
+ *             science-fiction:
+ *               summary: Science Fiction Story
+ *               value:
+ *                 parameters:
+ *                   category: "science-fiction"
+ *                   technology-level: "Advanced AI"
+ *                   setting: "Space Station"
+ *                   character: "Scientist"
+ *                 year: 2150
+ *             fantasy:
+ *               summary: Fantasy Story
+ *               value:
+ *                 parameters:
+ *                   category: "fantasy"
+ *                   magic-system: "Elemental Magic"
+ *                   setting: "Ancient Forest"
+ *                   character: "Wizard"
+ *             historical:
+ *               summary: Historical Fiction
+ *               value:
+ *                 parameters:
+ *                   category: "historical"
+ *                   time-period: "Victorian Era"
+ *                   location: "London"
+ *                   character: "Detective"
+ *                 year: 1890
+ *     responses:
+ *       201:
+ *         description: Content generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       example: "uuid-string"
+ *                     title:
+ *                       type: string
+ *                       example: "The Quantum Paradox"
+ *                     fiction_content:
+ *                       type: string
+ *                       example: "In the year 2150, Dr. Sarah Chen discovered..."
+ *                     image_url:
+ *                       type: string
+ *                       example: "https://oaidalleapiprodscus.blob.core.windows.net/..."
+ *                     image_prompt:
+ *                       type: string
+ *                       example: "Futuristic space station with advanced AI..."
+ *                     word_count:
+ *                       type: number
+ *                       example: 245
+ *                     generation_time:
+ *                       type: number
+ *                       example: 3500
+ *       500:
+ *         description: Generation failed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "OpenAI API key not configured"
  */
 app.post('/api/generate', async (req, res, next) => {
   try {
-    const { type, parameters, year } = generationRequestSchema.parse(req.body);
+    const { parameters, year } = generationRequestSchema.parse(req.body);
     
     const startTime = Date.now();
-    const result = await aiService.generate(type, parameters, year);
+    const result = await aiService.generate(parameters, year);
     
     if (!result.success) {
       throw boom.internal(result.error);
@@ -422,10 +929,9 @@ app.post('/api/generate', async (req, res, next) => {
 
     const contentData = {
       title: result.title,
-      content_type: result.type,
-      fiction_content: result.content || null,
-      image_url: result.imageUrl || null,
-      image_prompt: result.imagePrompt || null,
+      fiction_content: result.content,
+      image_url: result.imageUrl,
+      image_prompt: result.imagePrompt,
       prompt_data: parameters,
       metadata: result.metadata,
       generation_time: Date.now() - startTime,
@@ -447,16 +953,72 @@ app.post('/api/generate', async (req, res, next) => {
  * @swagger
  * /api/content:
  *   get:
- *     summary: Get all generated content with pagination and filters
+ *     summary: Get all generated content with pagination
  *     tags: [Content]
+ *     parameters:
+ *       - name: limit
+ *         in: query
+ *         description: Number of items to return (max 100)
+ *         schema:
+ *           type: number
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         example: 10
+ *     responses:
+ *       200:
+ *         description: List of generated content
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         example: "uuid-string"
+ *                       title:
+ *                         type: string
+ *                         example: "The Quantum Paradox"
+ *                       fiction_content:
+ *                         type: string
+ *                         example: "In the year 2150, Dr. Sarah Chen discovered..."
+ *                       image_url:
+ *                         type: string
+ *                         example: "https://oaidalleapiprodscus.blob.core.windows.net/..."
+ *                       word_count:
+ *                         type: number
+ *                         example: 245
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *       400:
+ *         description: Invalid query parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Validation failed"
  */
 app.get('/api/content', async (req, res, next) => {
   try {
     const filters = contentFiltersSchema.parse(req.query);
     const limit = parseInt(filters.limit) || 20;
-    const contentType = filters.type || null;
     
-    const content = await dataService.getRecentContent(limit, contentType);
+    const content = await dataService.getRecentContent(limit);
     res.json({ success: true, data: content });
   } catch (error) {
     next(error);
