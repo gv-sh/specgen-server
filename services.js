@@ -38,15 +38,194 @@ class DataService {
 
   async init() {
     return new Promise((resolve, reject) => {
-      this.db = new sqlite3.Database(this.dbPath, (err) => {
+      this.db = new sqlite3.Database(this.dbPath, async (err) => {
         if (err) {
           reject(boom.internal('Failed to connect to database', err));
         } else {
-          this.db.run('PRAGMA foreign_keys = ON');
-          resolve();
+          try {
+            this.db.run('PRAGMA foreign_keys = ON');
+            await this.ensureSchema();
+            await this.importJsonDataIfNeeded();
+            resolve();
+          } catch (initError) {
+            reject(initError);
+          }
         }
       });
     });
+  }
+
+  /**
+   * Ensure database schema exists
+   */
+  async ensureSchema() {
+    // Check if tables exist
+    const tableCheck = await this.get(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name='categories'"
+    );
+    
+    if (!tableCheck) {
+      // Create all tables
+      await this.createDatabaseSchema();
+    }
+  }
+
+  /**
+   * Create complete database schema
+   */
+  async createDatabaseSchema() {
+    console.log('Creating database schema...');
+
+    // Categories table
+    await this.run(`
+      CREATE TABLE categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT DEFAULT '',
+        visibility TEXT DEFAULT 'Show' CHECK(visibility IN ('Show', 'Hide')),
+        year INTEGER,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Parameters table
+    await this.run(`
+      CREATE TABLE parameters (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        type TEXT NOT NULL CHECK(type IN ('select', 'text', 'number', 'boolean', 'range')),
+        visibility TEXT DEFAULT 'Basic' CHECK(visibility IN ('Basic', 'Advanced', 'Hide')),
+        category_id TEXT NOT NULL,
+        required INTEGER DEFAULT 0 CHECK(required IN (0, 1)),
+        sort_order INTEGER DEFAULT 0,
+        parameter_values TEXT,
+        parameter_config TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Generated content table
+    await this.run(`
+      CREATE TABLE generated_content (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        content_type TEXT NOT NULL CHECK(content_type IN ('fiction', 'image', 'combined')),
+        fiction_content TEXT,
+        image_url TEXT,
+        image_prompt TEXT,
+        prompt_data TEXT,
+        metadata TEXT,
+        generation_time INTEGER DEFAULT 0,
+        word_count INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'completed' CHECK(status IN ('pending', 'generating', 'completed', 'failed')),
+        error_message TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Settings table
+    await this.run(`
+      CREATE TABLE settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        data_type TEXT DEFAULT 'string' CHECK(data_type IN ('string', 'number', 'boolean', 'json')),
+        description TEXT DEFAULT '',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create indexes
+    await this.run('CREATE INDEX idx_categories_visibility ON categories(visibility)');
+    await this.run('CREATE INDEX idx_categories_sort_order ON categories(sort_order)');
+    await this.run('CREATE INDEX idx_parameters_category_id ON parameters(category_id)');
+    await this.run('CREATE INDEX idx_parameters_visibility ON parameters(visibility)');
+    await this.run('CREATE INDEX idx_content_type ON generated_content(content_type)');
+    await this.run('CREATE INDEX idx_content_created_at ON generated_content(created_at DESC)');
+
+    // Insert default settings
+    await this.run(`
+      INSERT INTO settings (key, value, data_type, description) VALUES
+      ('app_version', '2.0.0', 'string', 'Application version'),
+      ('max_generations_per_session', '50', 'number', 'Maximum generations per session'),
+      ('enable_image_generation', 'true', 'boolean', 'Enable image generation'),
+      ('rate_limit_per_minute', '10', 'number', 'API rate limit per minute')
+    `);
+
+    console.log('✅ Database schema created successfully');
+  }
+
+  /**
+   * Import JSON data if database is empty and JSON files exist
+   */
+  async importJsonDataIfNeeded() {
+    try {
+      // Check if categories exist
+      const existingCategories = await this.query('SELECT COUNT(*) as count FROM categories');
+      
+      if (existingCategories[0].count === 0) {
+        console.log('Database is empty, attempting JSON data import...');
+        await this.importJsonData();
+      }
+    } catch (error) {
+      // If there's an error, it might be that tables don't exist yet
+      console.log('Skipping JSON import (tables may not exist yet)');
+    }
+  }
+
+  /**
+   * Import data from JSON files
+   */
+  async importJsonData() {
+    try {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      
+      // Try to read JSON database file
+      const jsonPath = path.resolve('./data/database.json');
+      const jsonData = JSON.parse(await fs.readFile(jsonPath, 'utf8'));
+      
+      console.log('Importing categories...');
+      // Import categories
+      for (const category of jsonData.categories || []) {
+        await this.createCategory({
+          id: category.id,
+          name: category.name,
+          description: category.description || '',
+          visibility: category.visibility || 'Show',
+          year: category.year || null,
+          sort_order: category.sort_order || 0
+        });
+      }
+
+      console.log('Importing parameters...');
+      // Import parameters
+      for (const param of jsonData.parameters || []) {
+        await this.createParameter({
+          id: param.id,
+          name: param.name,
+          description: param.description || '',
+          type: param.type === 'Dropdown' ? 'select' : param.type.toLowerCase(),
+          visibility: param.visibility || 'Basic',
+          category_id: param.categoryId,
+          required: param.required || false,
+          sort_order: param.sort_order || 0,
+          parameter_values: param.values || param.parameter_values,
+          parameter_config: param.config || param.parameter_config
+        });
+      }
+
+      console.log('✅ JSON data import completed successfully');
+      
+    } catch (error) {
+      console.log('No JSON data to import or import failed:', error.message);
+    }
   }
 
   async query(sql, params = []) {

@@ -9,9 +9,7 @@
     "dev": "NODE_ENV=development node --watch server.js",
     "dev:legacy": "NODE_ENV=development nodemon server.js",
     "test": "NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --runInBand --config jest.config.js --colors=true",
-    "migrate": "node scripts/migrate.js",
-    "lint": "eslint .",
-    "generate-api-spec": "node scripts/generateApiSpec.js"
+    "lint": "eslint ."
   },
   "keywords": [
     "api",
@@ -32,8 +30,7 @@
     "config.js", 
     "services.js",
     "test.js",
-    "scripts/",
-    "api-spec.json",
+    "schema/",
     "docs/",
     "README.md"
   ],

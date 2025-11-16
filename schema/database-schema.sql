@@ -1,6 +1,6 @@
--- Fresh unified database schema for SpecGen
--- Consolidated all data storage into a single SQLite database
--- Optimized for performance with proper indexing and constraints
+-- SpecGen Database Schema Definition
+-- Complete SQLite database schema with tables, indexes, and constraints
+-- This file serves as documentation - actual schema is created automatically by services.js
 
 -- Categories table: Fiction categories and genres
 CREATE TABLE categories (
