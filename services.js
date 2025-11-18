@@ -93,8 +93,7 @@ class DataService {
         visibility TEXT DEFAULT 'Show' CHECK(visibility IN ('Show', 'Hide')),
         year INTEGER,
         sort_order INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -112,7 +111,6 @@ class DataService {
         parameter_values TEXT,
         parameter_config TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
       )
     `);
@@ -126,17 +124,32 @@ class DataService {
         image_blob BLOB,
         image_thumbnail BLOB,
         image_format TEXT DEFAULT 'png',
-        image_size_bytes INTEGER DEFAULT 0,
-        thumbnail_size_bytes INTEGER DEFAULT 0,
         image_prompt TEXT CHECK(length(image_prompt) <= 1000),
         prompt_data TEXT,
         metadata TEXT,
         generation_time INTEGER DEFAULT 0 CHECK(generation_time >= 0),
         word_count INTEGER DEFAULT 0 CHECK(word_count >= 0),
         status TEXT DEFAULT 'completed' CHECK(status IN ('pending', 'generating', 'completed', 'failed')),
-        error_message TEXT,
+        share_enabled INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Instagram carousel shares table
+    await this.run(`
+      CREATE TABLE instagram_shares (
+        id TEXT PRIMARY KEY,
+        content_id TEXT NOT NULL,
+        user_instagram_handle TEXT CHECK(user_instagram_handle IS NULL OR (length(user_instagram_handle) <= 30 AND user_instagram_handle GLOB '[a-zA-Z0-9._]*')),
+        caption TEXT CHECK(caption IS NULL OR length(caption) <= 2200),
+        hashtags TEXT CHECK(hashtags IS NULL OR length(hashtags) <= 1000),
+        share_status TEXT DEFAULT 'pending' CHECK(share_status IN ('pending', 'success', 'failed')),
+        instagram_media_id TEXT,
+        instagram_post_url TEXT,
+        retry_data TEXT,
+        shared_at DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        FOREIGN KEY (content_id) REFERENCES generated_content(id) ON DELETE CASCADE
       )
     `);
 
@@ -145,10 +158,7 @@ class DataService {
       CREATE TABLE settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL,
-        data_type TEXT DEFAULT 'string' CHECK(data_type IN ('string', 'number', 'boolean', 'json')),
-        description TEXT DEFAULT '',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        data_type TEXT DEFAULT 'string' CHECK(data_type IN ('string', 'number', 'boolean', 'json'))
       )
     `);
 
@@ -160,15 +170,36 @@ class DataService {
     await this.run('CREATE INDEX idx_content_created_at ON generated_content(created_at DESC)');
     await this.run('CREATE INDEX idx_content_status ON generated_content(status)');
     await this.run('CREATE INDEX idx_content_word_count ON generated_content(word_count)');
+    await this.run('CREATE INDEX idx_content_share_enabled ON generated_content(share_enabled, created_at DESC)');
     await this.run('CREATE INDEX idx_composite_category_params ON parameters(category_id, visibility, sort_order)');
+
+    // Instagram shares indexes
+    await this.run('CREATE INDEX idx_instagram_shares_content_id ON instagram_shares(content_id)');
+    await this.run('CREATE INDEX idx_instagram_shares_status ON instagram_shares(share_status, created_at DESC)');
+    await this.run('CREATE INDEX idx_instagram_shares_user_handle ON instagram_shares(user_instagram_handle)');
+    await this.run('CREATE INDEX idx_instagram_shares_media_id ON instagram_shares(instagram_media_id)');
+    await this.run('CREATE INDEX idx_instagram_shares_shared_at ON instagram_shares(shared_at DESC)');
+    await this.run('CREATE INDEX idx_instagram_shares_failed ON instagram_shares(created_at DESC) WHERE share_status = \'failed\'');
 
     // Insert default settings
     await this.run(`
-      INSERT INTO settings (key, value, data_type, description) VALUES
-      ('app_version', '2.0.0', 'string', 'Application version'),
-      ('max_generations_per_session', '50', 'number', 'Maximum generations per session'),
-      ('enable_image_generation', 'true', 'boolean', 'Enable image generation'),
-      ('rate_limit_per_minute', '10', 'number', 'API rate limit per minute')
+      INSERT INTO settings (key, value, data_type) VALUES
+      ('app_version', '2.0.0', 'string'),
+      ('max_generations_per_session', '50', 'number'),
+      ('enable_image_generation', 'true', 'boolean'),
+      ('rate_limit_per_minute', '10', 'number'),
+      ('instagram_sharing_enabled', 'false', 'boolean'),
+      ('specgen_instagram_access_token', '', 'string'),
+      ('specgen_instagram_user_id', '', 'string'),
+      ('specgen_instagram_username', 'specgen_ai', 'string'),
+      ('instagram_app_id', '', 'string'),
+      ('instagram_app_secret', '', 'string'),
+      ('instagram_attribution_template', 'Amazing AI-generated story by @{handle}! 🤖✨', 'string'),
+      ('default_carousel_hashtags', '["#aiart", "#fiction", "#specgen", "#storytelling"]', 'json'),
+      ('instagram_carousel_template', '{title}\\n\\nGenerated with SpecGen AI ✨\\n\\n{hashtags}', 'string'),
+      ('instagram_daily_post_limit', '20', 'number'),
+      ('instagram_max_retry_attempts', '3', 'number'),
+      ('instagram_retry_delay_minutes', '15', 'number')
     `);
 
     console.log('✅ Database schema created successfully');
@@ -422,9 +453,17 @@ class DataService {
   // Content
   async saveGeneratedContent(contentData) {
     const id = uuidv4();
+    
+    // Build metadata including image sizes if available
+    const metadata = {
+      ...contentData.metadata,
+      image_size_bytes: contentData.image_size_bytes || 0,
+      thumbnail_size_bytes: contentData.thumbnail_size_bytes || 0
+    };
+    
     await this.run(
-      `INSERT INTO generated_content (id, title, fiction_content, image_blob, image_thumbnail, image_format, image_size_bytes, thumbnail_size_bytes, image_prompt, prompt_data, metadata, generation_time, word_count, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO generated_content (id, title, fiction_content, image_blob, image_thumbnail, image_format, image_prompt, prompt_data, metadata, generation_time, word_count, status, share_enabled)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         contentData.title,
@@ -432,14 +471,13 @@ class DataService {
         contentData.image_blob || null,
         contentData.image_thumbnail || null,
         contentData.image_format || 'png',
-        contentData.image_size_bytes || 0,
-        contentData.thumbnail_size_bytes || 0,
         contentData.image_prompt || null,
         JSON.stringify(contentData.prompt_data || {}),
-        JSON.stringify(contentData.metadata || {}),
+        JSON.stringify(metadata),
         contentData.generation_time || 0,
         contentData.word_count || 0,
-        contentData.status || 'completed'
+        contentData.status || 'completed',
+        contentData.share_enabled !== undefined ? contentData.share_enabled : 1
       ]
     );
     return await this.getGeneratedContentById(id);
@@ -452,14 +490,13 @@ class DataService {
       ...content,
       prompt_data: JSON.parse(content.prompt_data),
       metadata: JSON.parse(content.metadata),
-      created_at: new Date(content.created_at),
-      updated_at: new Date(content.updated_at)
+      created_at: new Date(content.created_at)
     };
   }
 
   async getGeneratedContentForApi(id) {
     const content = await this.get(
-      'SELECT id, title, fiction_content, image_format, image_size_bytes, thumbnail_size_bytes, image_prompt, prompt_data, metadata, generation_time, word_count, status, created_at, updated_at FROM generated_content WHERE id = ?', 
+      'SELECT * FROM generated_content WHERE id = ?', 
       [id]
     );
     if (!content) throw boom.notFound(`Content with id ${id} not found`);
@@ -468,12 +505,12 @@ class DataService {
       ...content,
       prompt_data: JSON.parse(content.prompt_data),
       metadata: JSON.parse(content.metadata),
-      created_at: new Date(content.created_at),
-      updated_at: new Date(content.updated_at)
+      created_at: new Date(content.created_at)
     };
 
     // Add image URLs if we have BLOB data stored
-    if (content.image_size_bytes > 0) {
+    const metadata = JSON.parse(content.metadata);
+    if (metadata.image_size_bytes > 0) {
       result.image_original_url = `/api/images/${id}/original`;
       result.image_thumbnail_url = `/api/images/${id}/thumbnail`;
     }
@@ -483,7 +520,7 @@ class DataService {
 
   async getRecentContent(limit = 20) {
     const content = await this.query(
-      'SELECT id, title, fiction_content, image_format, image_size_bytes, thumbnail_size_bytes, image_prompt, prompt_data, metadata, generation_time, word_count, status, created_at, updated_at FROM generated_content ORDER BY created_at DESC LIMIT ?',
+      'SELECT * FROM generated_content ORDER BY created_at DESC LIMIT ?',
       [limit]
     );
     return content.map(item => {
@@ -491,18 +528,113 @@ class DataService {
         ...item,
         prompt_data: JSON.parse(item.prompt_data),
         metadata: JSON.parse(item.metadata),
-        created_at: new Date(item.created_at),
-        updated_at: new Date(item.updated_at)
+        created_at: new Date(item.created_at)
       };
 
       // Add image URLs if we have BLOB data stored
-      if (item.image_size_bytes > 0) {
+      const metadata = JSON.parse(item.metadata);
+      if (metadata.image_size_bytes > 0) {
         result.image_original_url = `/api/images/${item.id}/original`;
         result.image_thumbnail_url = `/api/images/${item.id}/thumbnail`;
       }
 
       return result;
     });
+  }
+
+  // Instagram Sharing Methods
+  async createInstagramShare(contentId, shareData) {
+    const id = uuidv4();
+    
+    // Verify content exists
+    await this.getGeneratedContentById(contentId);
+    
+    const retryData = {
+      attempt_count: 0,
+      last_attempt_at: null,
+      error_message: null
+    };
+    
+    await this.run(
+      `INSERT INTO instagram_shares (id, content_id, user_instagram_handle, caption, hashtags, share_status, retry_data)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        contentId,
+        shareData.user_instagram_handle || null,
+        shareData.caption || null,
+        shareData.hashtags ? JSON.stringify(shareData.hashtags) : null,
+        'pending',
+        JSON.stringify(retryData)
+      ]
+    );
+    
+    return await this.getInstagramShareById(id);
+  }
+
+  async getInstagramShareById(id) {
+    const share = await this.get('SELECT * FROM instagram_shares WHERE id = ?', [id]);
+    if (!share) throw boom.notFound(`Instagram share with id ${id} not found`);
+    return {
+      ...share,
+      hashtags: share.hashtags ? JSON.parse(share.hashtags) : null,
+      retry_data: share.retry_data ? JSON.parse(share.retry_data) : null,
+      created_at: new Date(share.created_at)
+    };
+  }
+
+  async getInstagramSharesByContentId(contentId) {
+    const shares = await this.query(
+      'SELECT * FROM instagram_shares WHERE content_id = ? ORDER BY created_at DESC',
+      [contentId]
+    );
+    return shares.map(share => ({
+      ...share,
+      hashtags: share.hashtags ? JSON.parse(share.hashtags) : null,
+      retry_data: share.retry_data ? JSON.parse(share.retry_data) : null,
+      created_at: new Date(share.created_at)
+    }));
+  }
+
+  async updateInstagramShareStatus(shareId, status, updateData = {}) {
+    const existing = await this.getInstagramShareById(shareId);
+    
+    const updates = {
+      share_status: status,
+      instagram_media_id: updateData.instagram_media_id || existing.instagram_media_id,
+      instagram_post_url: updateData.instagram_post_url || existing.instagram_post_url,
+      shared_at: status === 'success' ? (updateData.shared_at || new Date().toISOString()) : existing.shared_at
+    };
+
+    // Handle retry data
+    if (updateData.retry_data) {
+      updates.retry_data = JSON.stringify(updateData.retry_data);
+    } else {
+      updates.retry_data = existing.retry_data ? JSON.stringify(existing.retry_data) : null;
+    }
+
+    await this.run(
+      `UPDATE instagram_shares SET share_status = ?, instagram_media_id = ?, instagram_post_url = ?, retry_data = ?, shared_at = ? WHERE id = ?`,
+      [updates.share_status, updates.instagram_media_id, updates.instagram_post_url, updates.retry_data, updates.shared_at, shareId]
+    );
+    
+    return await this.getInstagramShareById(shareId);
+  }
+
+  async getFailedInstagramShares(maxRetries = 3) {
+    const shares = await this.query(
+      `SELECT * FROM instagram_shares WHERE share_status = 'failed' ORDER BY created_at ASC`,
+      []
+    );
+    
+    return shares
+      .map(share => ({
+        ...share,
+        hashtags: share.hashtags ? JSON.parse(share.hashtags) : null,
+        retry_data: share.retry_data ? JSON.parse(share.retry_data) : { attempt_count: 0 },
+        created_at: new Date(share.created_at)
+      }))
+      .filter(share => (share.retry_data?.attempt_count || 0) < maxRetries);
   }
 
   // Settings
@@ -522,11 +654,11 @@ class DataService {
     return parsed;
   }
 
-  async setSetting(key, value, dataType = 'string', description = '') {
+  async setSetting(key, value, dataType = 'string') {
     const stringValue = this.stringifySettingValue(value, dataType);
     await this.run(
-      `INSERT OR REPLACE INTO settings (key, value, data_type, description) VALUES (?, ?, ?, ?)`,
-      [key, stringValue, dataType, description]
+      `INSERT OR REPLACE INTO settings (key, value, data_type) VALUES (?, ?, ?)`,
+      [key, stringValue, dataType]
     );
     return await this.getSetting(key);
   }
@@ -547,8 +679,7 @@ class DataService {
       required: Boolean(param.required),
       parameter_values: param.parameter_values ? JSON.parse(param.parameter_values) : null,
       parameter_config: param.parameter_config ? JSON.parse(param.parameter_config) : null,
-      created_at: new Date(param.created_at),
-      updated_at: new Date(param.updated_at)
+      created_at: new Date(param.created_at)
     }));
   }
 
@@ -561,9 +692,7 @@ class DataService {
     }
     return {
       ...setting,
-      value,
-      created_at: new Date(setting.created_at),
-      updated_at: new Date(setting.updated_at)
+      value
     };
   }
 

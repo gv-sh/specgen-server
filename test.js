@@ -42,8 +42,7 @@ async function initTestDatabase() {
       visibility TEXT DEFAULT 'Show' CHECK(visibility IN ('Show', 'Hide')),
       year INTEGER,
       sort_order INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
@@ -60,7 +59,6 @@ async function initTestDatabase() {
       parameter_values TEXT,
       parameter_config TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
     )
   `);
@@ -70,16 +68,34 @@ async function initTestDatabase() {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       fiction_content TEXT NOT NULL,
-      image_url TEXT NOT NULL,
+      image_blob BLOB,
+      image_thumbnail BLOB,
+      image_format TEXT DEFAULT 'png',
       image_prompt TEXT,
       prompt_data TEXT,
       metadata TEXT,
       generation_time INTEGER DEFAULT 0,
       word_count INTEGER DEFAULT 0,
       status TEXT DEFAULT 'completed' CHECK(status IN ('pending', 'generating', 'completed', 'failed')),
-      error_message TEXT,
+      share_enabled INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await dataService.run(`
+    CREATE TABLE IF NOT EXISTS instagram_shares (
+      id TEXT PRIMARY KEY,
+      content_id TEXT NOT NULL,
+      user_instagram_handle TEXT,
+      caption TEXT,
+      hashtags TEXT,
+      share_status TEXT DEFAULT 'pending' CHECK(share_status IN ('pending', 'success', 'failed')),
+      instagram_media_id TEXT,
+      instagram_post_url TEXT,
+      retry_data TEXT,
+      shared_at DATETIME,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      FOREIGN KEY (content_id) REFERENCES generated_content(id) ON DELETE CASCADE
     )
   `);
 
@@ -87,10 +103,7 @@ async function initTestDatabase() {
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL,
-      data_type TEXT DEFAULT 'string' CHECK(data_type IN ('string', 'number', 'boolean', 'json')),
-      description TEXT DEFAULT '',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      data_type TEXT DEFAULT 'string' CHECK(data_type IN ('string', 'number', 'boolean', 'json'))
     )
   `);
 
@@ -168,9 +181,9 @@ async function initTestDatabase() {
   });
 
   // Create test settings
-  await dataService.setSetting('api_version', '2.0.0', 'string', 'API Version');
-  await dataService.setSetting('max_generations_per_hour', 10, 'number', 'Rate limit');
-  await dataService.setSetting('enable_image_generation', true, 'boolean', 'Enable image generation');
+  await dataService.setSetting('api_version', '2.0.0', 'string');
+  await dataService.setSetting('max_generations_per_hour', 10, 'number');
+  await dataService.setSetting('enable_image_generation', true, 'boolean');
 }
 
 /**
@@ -627,5 +640,129 @@ describe('SpecGen Server - Error Handling', () => {
     
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
+  });
+});
+
+describe('SpecGen Server - Instagram Sharing', () => {
+  test('Should create Instagram share record', async () => {
+    // First create some test content
+    const contentData = {
+      title: 'Test Story',
+      fiction_content: 'This is a test story for Instagram sharing.',
+      word_count: 10,
+      metadata: { test: true }
+    };
+    
+    const content = await dataService.saveGeneratedContent(contentData);
+    
+    // Create Instagram share
+    const shareData = {
+      user_instagram_handle: 'testuser',
+      caption: 'Amazing AI story!',
+      hashtags: ['#ai', '#story', '#test']
+    };
+    
+    const share = await dataService.createInstagramShare(content.id, shareData);
+    
+    expect(share.content_id).toBe(content.id);
+    expect(share.user_instagram_handle).toBe('testuser');
+    expect(share.caption).toBe('Amazing AI story!');
+    expect(share.hashtags).toEqual(['#ai', '#story', '#test']);
+    expect(share.share_status).toBe('pending');
+    expect(share.retry_data.attempt_count).toBe(0);
+  });
+
+  test('Should get Instagram shares by content ID', async () => {
+    const contentData = {
+      title: 'Test Story 2',
+      fiction_content: 'Another test story.',
+      word_count: 5
+    };
+    
+    const content = await dataService.saveGeneratedContent(contentData);
+    
+    // Create multiple shares
+    await dataService.createInstagramShare(content.id, { user_instagram_handle: 'user1' });
+    await dataService.createInstagramShare(content.id, { user_instagram_handle: 'user2' });
+    
+    const shares = await dataService.getInstagramSharesByContentId(content.id);
+    
+    expect(shares).toHaveLength(2);
+    expect(shares[0].user_instagram_handle).toBe('user2'); // Newest first
+    expect(shares[1].user_instagram_handle).toBe('user1');
+  });
+
+  test('Should update Instagram share status', async () => {
+    const contentData = {
+      title: 'Test Story 3',
+      fiction_content: 'Test story for status update.',
+      word_count: 6
+    };
+    
+    const content = await dataService.saveGeneratedContent(contentData);
+    const share = await dataService.createInstagramShare(content.id, { user_instagram_handle: 'testuser' });
+    
+    // Update to success
+    const updatedShare = await dataService.updateInstagramShareStatus(share.id, 'success', {
+      instagram_media_id: 'IG123456',
+      instagram_post_url: 'https://instagram.com/p/123456'
+    });
+    
+    expect(updatedShare.share_status).toBe('success');
+    expect(updatedShare.instagram_media_id).toBe('IG123456');
+    expect(updatedShare.instagram_post_url).toBe('https://instagram.com/p/123456');
+    expect(updatedShare.shared_at).toBeDefined();
+  });
+
+  test('Should get failed Instagram shares for retry', async () => {
+    const contentData = {
+      title: 'Test Story 4',
+      fiction_content: 'Failed story share.',
+      word_count: 4
+    };
+    
+    const content = await dataService.saveGeneratedContent(contentData);
+    const share = await dataService.createInstagramShare(content.id, { user_instagram_handle: 'failuser' });
+    
+    // Update to failed with retry data
+    await dataService.updateInstagramShareStatus(share.id, 'failed', {
+      retry_data: {
+        attempt_count: 1,
+        last_attempt_at: new Date().toISOString(),
+        error_message: 'API rate limit exceeded'
+      }
+    });
+    
+    const failedShares = await dataService.getFailedInstagramShares(3);
+    
+    expect(failedShares).toHaveLength(1);
+    expect(failedShares[0].share_status).toBe('failed');
+    expect(failedShares[0].retry_data.attempt_count).toBe(1);
+    expect(failedShares[0].retry_data.error_message).toBe('API rate limit exceeded');
+  });
+
+  test('Should filter out shares exceeding max retry attempts', async () => {
+    const contentData = {
+      title: 'Test Story 5',
+      fiction_content: 'Max retries exceeded.',
+      word_count: 4
+    };
+    
+    const content = await dataService.saveGeneratedContent(contentData);
+    const share = await dataService.createInstagramShare(content.id, { user_instagram_handle: 'maxuser' });
+    
+    // Update to failed with max retries exceeded
+    await dataService.updateInstagramShareStatus(share.id, 'failed', {
+      retry_data: {
+        attempt_count: 5, // Exceeds default max of 3
+        last_attempt_at: new Date().toISOString(),
+        error_message: 'Max retries exceeded'
+      }
+    });
+    
+    const failedShares = await dataService.getFailedInstagramShares(3);
+    
+    // Should be filtered out
+    expect(failedShares.some(s => s.id === share.id)).toBe(false);
   });
 });
