@@ -168,7 +168,7 @@ class DataService {
         console.log('Database is empty, attempting JSON data import...');
         await this.importJsonData();
       }
-    } catch (error) {
+    } catch {
       // If there's an error, it might be that tables don't exist yet
       console.log('Skipping JSON import (tables may not exist yet)');
     }
@@ -193,8 +193,6 @@ class DataService {
           id: category.id,
           name: category.name,
           description: category.description || '',
-          visibility: category.visibility || 'Show',
-          year: category.year || null,
           sort_order: category.sort_order || 0
         });
       }
@@ -207,12 +205,9 @@ class DataService {
           name: param.name,
           description: param.description || '',
           type: param.type === 'Dropdown' ? 'select' : param.type.toLowerCase(),
-          visibility: param.visibility || 'Basic',
           category_id: param.categoryId,
-          required: param.required || false,
           sort_order: param.sort_order || 0,
-          parameter_values: param.values || param.parameter_values,
-          parameter_config: param.config || param.parameter_config
+          parameter_values: param.values || param.parameter_values
         });
       }
 
@@ -268,12 +263,11 @@ class DataService {
   // Categories
   async getCategories() {
     const categories = await this.query(
-      `SELECT * FROM categories WHERE visibility = 'Show' ORDER BY sort_order ASC, name ASC`
+      `SELECT * FROM categories ORDER BY sort_order ASC, name ASC`
     );
     return categories.map(category => ({
       ...category,
-      created_at: new Date(category.created_at),
-      updated_at: new Date(category.updated_at)
+      created_at: new Date(category.created_at)
     }));
   }
 
@@ -282,8 +276,7 @@ class DataService {
     if (!category) throw boom.notFound(`Category with id ${id} not found`);
     return {
       ...category,
-      created_at: new Date(category.created_at),
-      updated_at: new Date(category.updated_at)
+      created_at: new Date(category.created_at)
     };
   }
 
@@ -305,12 +298,10 @@ class DataService {
   async updateCategory(id, updates) {
     const existing = await this.getCategoryById(id);
     await this.run(
-      `UPDATE categories SET name = ?, description = ?, visibility = ?, year = ?, sort_order = ? WHERE id = ?`,
+      `UPDATE categories SET name = ?, description = ?, sort_order = ? WHERE id = ?`,
       [
         updates.name || existing.name,
         updates.description !== undefined ? updates.description : existing.description,
-        updates.visibility || existing.visibility,
-        updates.year !== undefined ? updates.year : existing.year,
         updates.sort_order !== undefined ? updates.sort_order : existing.sort_order,
         id
       ]
@@ -327,7 +318,7 @@ class DataService {
   // Parameters
   async getParametersByCategory(categoryId) {
     const parameters = await this.query(
-      `SELECT * FROM parameters WHERE category_id = ? AND visibility != 'Hide' ORDER BY sort_order ASC, name ASC`,
+      `SELECT * FROM parameters WHERE category_id = ? ORDER BY sort_order ASC, name ASC`,
       [categoryId]
     );
     return this.parseParameters(parameters);
@@ -373,17 +364,14 @@ class DataService {
     if (updates.category_id) await this.getCategoryById(updates.category_id);
     
     await this.run(
-      `UPDATE parameters SET name = ?, description = ?, type = ?, visibility = ?, category_id = ?, required = ?, sort_order = ?, parameter_values = ?, parameter_config = ? WHERE id = ?`,
+      `UPDATE parameters SET name = ?, description = ?, type = ?, category_id = ?, sort_order = ?, parameter_values = ? WHERE id = ?`,
       [
         updates.name || existing.name,
         updates.description !== undefined ? updates.description : existing.description,
         updates.type || existing.type,
-        updates.visibility || existing.visibility,
         updates.category_id || existing.category_id,
-        updates.required !== undefined ? (updates.required ? 1 : 0) : existing.required,
         updates.sort_order !== undefined ? updates.sort_order : existing.sort_order,
         updates.parameter_values ? JSON.stringify(updates.parameter_values) : (existing.parameter_values ? JSON.stringify(existing.parameter_values) : null),
-        updates.parameter_config ? JSON.stringify(updates.parameter_config) : (existing.parameter_config ? JSON.stringify(existing.parameter_config) : null),
         id
       ]
     );
@@ -603,9 +591,9 @@ class AIService {
     }
   }
 
-  async generateImage(parameters, year, generatedText = null) {
+  async generateImage(year, generatedText = null) {
     const aiConfig = config.getAIConfig('image');
-    const prompt = this.buildImagePrompt(parameters, year, generatedText);
+    const prompt = this.buildImagePrompt(year, generatedText);
     
     try {
       const response = await axios.post(
@@ -663,7 +651,7 @@ class AIService {
     const fictionResult = await this.generateFiction(parameters, year);
     if (!fictionResult.success) return fictionResult;
 
-    const imageResult = await this.generateImage(parameters, year, fictionResult.content);
+    const imageResult = await this.generateImage(year, fictionResult.content);
     if (!imageResult.success) return imageResult;
 
     // Handle both BLOB and URL responses
@@ -699,7 +687,7 @@ class AIService {
     
     if (year) prompt += `Setting: Year ${year}\n`;
     
-    Object.entries(parameters).forEach(([category, categoryParams]) => {
+    Object.entries(parameters).forEach(([, categoryParams]) => {
       if (typeof categoryParams === 'object') {
         Object.entries(categoryParams).forEach(([param, value]) => {
           if (value !== null && value !== undefined) {
@@ -713,7 +701,7 @@ class AIService {
     return prompt;
   }
 
-  buildImagePrompt(parameters, year, generatedText) {
+  buildImagePrompt(year, generatedText) {
     const aiConfig = config.getAIConfig('image');
     let prompt = 'Create a beautiful, detailed image';
     

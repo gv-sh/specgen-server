@@ -6,7 +6,6 @@
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import fs from 'fs/promises';
-import path from 'path';
 
 import app from './server.js';
 import { dataService } from './services.js';
@@ -33,14 +32,12 @@ async function initTestDatabase() {
   // Initialize new database
   await dataService.init();
 
-  // Create database schema
+  // Create database schema - minimal version matching services.js
   await dataService.run(`
     CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL UNIQUE,
       description TEXT DEFAULT '',
-      visibility TEXT DEFAULT 'Show' CHECK(visibility IN ('Show', 'Hide')),
-      year INTEGER,
       sort_order INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -52,12 +49,9 @@ async function initTestDatabase() {
       name TEXT NOT NULL,
       description TEXT DEFAULT '',
       type TEXT NOT NULL CHECK(type IN ('select', 'text', 'number', 'boolean', 'range')),
-      visibility TEXT DEFAULT 'Basic' CHECK(visibility IN ('Basic', 'Advanced', 'Hide')),
       category_id TEXT NOT NULL,
-      required INTEGER DEFAULT 0 CHECK(required IN (0, 1)),
       sort_order INTEGER DEFAULT 0,
       parameter_values TEXT,
-      parameter_config TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
     )
@@ -89,8 +83,6 @@ async function initTestDatabase() {
     id: 'science-fiction',
     name: 'Science Fiction',
     description: 'Stories set in the future with advanced technology',
-    visibility: 'Show',
-    year: 2150,
     sort_order: 1
   });
 
@@ -98,8 +90,6 @@ async function initTestDatabase() {
     id: 'fantasy',
     name: 'Fantasy', 
     description: 'Stories with magic and mythical creatures',
-    visibility: 'Show',
-    year: 1250,
     sort_order: 2
   });
 
@@ -107,8 +97,6 @@ async function initTestDatabase() {
     id: 'hidden-category',
     name: 'Hidden Category',
     description: 'This category should not appear in results',
-    visibility: 'Hide',
-    year: 2000,
     sort_order: 3
   });
 
@@ -118,9 +106,7 @@ async function initTestDatabase() {
     name: 'Technology Level',
     description: 'Level of technological advancement',
     type: 'select',
-    visibility: 'Basic',
     category_id: 'science-fiction',
-    required: false,
     sort_order: 1,
     parameter_values: [
       { id: 'near-future', label: 'Near Future' },
@@ -134,9 +120,7 @@ async function initTestDatabase() {
     name: 'Magic System',
     description: 'Type of magical system',
     type: 'select',
-    visibility: 'Basic',
     category_id: 'fantasy',
-    required: true,
     sort_order: 1,
     parameter_values: [
       { id: 'elemental', label: 'Elemental Magic' },
@@ -149,17 +133,19 @@ async function initTestDatabase() {
     id: 'story-length',
     name: 'Story Length',
     description: 'Length of the generated story',
-    type: 'range',
-    visibility: 'Advanced',
+    type: 'select',
     category_id: 'fantasy',
-    required: false,
     sort_order: 2,
-    parameter_config: { min: 100, max: 2000, step: 50 }
+    parameter_values: [
+      { id: 'short', label: 'Short (100-500 words)' },
+      { id: 'medium', label: 'Medium (500-1000 words)' },
+      { id: 'long', label: 'Long (1000+ words)' }
+    ]
   });
 
   // Create test settings
-  await dataService.setSetting('api_version', '2.0.0', 'string');
-  await dataService.setSetting('max_generations_per_hour', 10, 'number');
+  await dataService.setSetting('app_version', '2.0.0', 'string');
+  await dataService.setSetting('max_generations_per_session', 50, 'number');
   await dataService.setSetting('enable_image_generation', true, 'boolean');
 }
 
@@ -257,18 +243,18 @@ describe('SpecGen Server - System Endpoints', () => {
 });
 
 describe('SpecGen Server - Admin Categories', () => {
-  test('GET /api/admin/categories - Should return visible categories', async () => {
+  test('GET /api/admin/categories - Should return all categories', async () => {
     const response = await request(app).get('/api/admin/categories');
     
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(Array.isArray(response.body.data)).toBe(true);
-    expect(response.body.data).toHaveLength(2); // Only visible categories
+    expect(response.body.data).toHaveLength(3); // All categories (no visibility filtering)
     
     const categoryNames = response.body.data.map(c => c.name);
     expect(categoryNames).toContain('Science Fiction');
     expect(categoryNames).toContain('Fantasy');
-    expect(categoryNames).not.toContain('Hidden Category');
+    expect(categoryNames).toContain('Hidden Category');
   });
 
   test('GET /api/admin/categories/:id - Should return specific category', async () => {
@@ -278,7 +264,6 @@ describe('SpecGen Server - Admin Categories', () => {
     expect(response.body.success).toBe(true);
     expect(response.body.data.id).toBe('science-fiction');
     expect(response.body.data.name).toBe('Science Fiction');
-    expect(response.body.data.year).toBe(2150);
   });
 
   test('GET /api/admin/categories/:id - Should return 404 for non-existent category', async () => {
@@ -292,9 +277,7 @@ describe('SpecGen Server - Admin Categories', () => {
   test('POST /api/admin/categories - Should create new category', async () => {
     const newCategory = {
       name: 'Cyberpunk',
-      description: 'High tech, low life stories',
-      visibility: 'Show',
-      year: 2077
+      description: 'High tech, low life stories'
     };
 
     const response = await request(app)
@@ -305,7 +288,6 @@ describe('SpecGen Server - Admin Categories', () => {
     expect(response.body.success).toBe(true);
     expect(response.body.data.name).toBe('Cyberpunk');
     expect(response.body.data.id).toBe('cyberpunk');
-    expect(response.body.data.year).toBe(2077);
   });
 
   test('POST /api/admin/categories - Should validate required fields', async () => {
@@ -320,8 +302,7 @@ describe('SpecGen Server - Admin Categories', () => {
 
   test('PUT /api/admin/categories/:id - Should update category', async () => {
     const updates = {
-      description: 'Updated description for sci-fi',
-      year: 2200
+      description: 'Updated description for sci-fi'
     };
 
     const response = await request(app)
@@ -331,7 +312,6 @@ describe('SpecGen Server - Admin Categories', () => {
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(response.body.data.description).toBe('Updated description for sci-fi');
-    expect(response.body.data.year).toBe(2200);
     expect(response.body.data.name).toBe('Science Fiction'); // Should remain unchanged
   });
 
@@ -395,11 +375,13 @@ describe('SpecGen Server - Admin Parameters', () => {
     const newParameter = {
       name: 'Character Count',
       description: 'Number of main characters',
-      type: 'number',
-      visibility: 'Basic',
+      type: 'select',
       category_id: 'fantasy',
-      required: false,
-      parameter_config: { min: 1, max: 10, step: 1 }
+      parameter_values: [
+        { id: '1', label: '1 Character' },
+        { id: '2', label: '2 Characters' },
+        { id: '3', label: '3 Characters' }
+      ]
     };
 
     const response = await request(app)
@@ -409,16 +391,14 @@ describe('SpecGen Server - Admin Parameters', () => {
     expect(response.status).toBe(201);
     expect(response.body.success).toBe(true);
     expect(response.body.data.name).toBe('Character Count');
-    expect(response.body.data.type).toBe('number');
-    expect(response.body.data.parameter_config).toEqual({ min: 1, max: 10, step: 1 });
+    expect(response.body.data.type).toBe('select');
   });
 
   test('POST /api/admin/parameters - Should validate category exists', async () => {
     const invalidParameter = {
       name: 'Test Parameter',
       type: 'text',
-      category_id: 'non-existent-category',
-      visibility: 'Basic'
+      category_id: 'non-existent-category'
     };
 
     const response = await request(app)
@@ -448,14 +428,14 @@ describe('SpecGen Server - Admin Settings', () => {
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(typeof response.body.data).toBe('object');
-    expect(response.body.data.api_version).toBe('2.0.0');
-    expect(response.body.data.max_generations_per_hour).toBe(10);
+    expect(response.body.data.app_version).toBe('2.0.0');
+    expect(response.body.data.max_generations_per_session).toBe(50);
     expect(response.body.data.enable_image_generation).toBe(true);
   });
 
   test('PUT /api/admin/settings - Should update settings', async () => {
     const updates = {
-      max_generations_per_hour: 20,
+      max_generations_per_session: 20,
       enable_image_generation: false,
       new_setting: 'test value'
     };
@@ -466,7 +446,7 @@ describe('SpecGen Server - Admin Settings', () => {
     
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
-    expect(response.body.data.max_generations_per_hour).toBe(20); // Now properly typed
+    expect(response.body.data.max_generations_per_session).toBe(20);
     expect(response.body.data.enable_image_generation).toBe(false);
     expect(response.body.data.new_setting).toBe('test value');
   });
@@ -606,7 +586,7 @@ describe('SpecGen Server - Error Handling', () => {
   });
 
   test('Should handle large payloads within limits', async () => {
-    const largeDescription = 'x'.repeat(1000); // Within limit
+    const largeDescription = 'x'.repeat(400); // Within limit (500 char max)
     
     const response = await request(app)
       .post('/api/admin/categories')

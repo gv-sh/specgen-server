@@ -35,9 +35,7 @@ const PORT = config.get('server.port');
 // Category schemas
 const categorySchema = z.object({
   name: z.string().min(1, 'Name is required').max(config.get('validation.maxNameLength')),
-  description: z.string().max(config.get('validation.maxDescriptionLength')).default(''),
-  visibility: z.enum(['Show', 'Hide']).default('Show'),
-  year: z.number().int().min(config.get('validation.yearRange.min')).max(config.get('validation.yearRange.max')).nullable().optional()
+  description: z.string().max(config.get('validation.maxDescriptionLength')).default('')
 });
 
 const categoryUpdateSchema = categorySchema.partial().refine(
@@ -61,14 +59,11 @@ const parameterSchema = z.object({
   name: z.string().min(1, 'Name is required').max(config.get('validation.maxNameLength')),
   description: z.string().max(config.get('validation.maxDescriptionLength')).default(''),
   type: z.enum(['select', 'text', 'number', 'boolean', 'range']),
-  visibility: z.enum(['Basic', 'Advanced', 'Hide']).default('Basic'),
   category_id: z.string().min(1, 'Category ID is required'),
-  required: z.boolean().default(false),
   parameter_values: z.union([
     z.array(parameterValueSchema),
     z.object({ on: z.string(), off: z.string() })
-  ]).optional(),
-  parameter_config: parameterConfigSchema.optional()
+  ]).optional()
 });
 
 const parameterUpdateSchema = parameterSchema.partial().omit({ category_id: true });
@@ -925,7 +920,12 @@ app.get('/api/admin/settings', async (req, res, next) => {
 
 app.put('/api/admin/settings', async (req, res, next) => {
   try {
-    const validatedData = settingsSchema.parse(req.body);
+    // Simple validation - just check it's an object
+    if (!req.body || typeof req.body !== 'object') {
+      throw boom.badRequest('Request body must be an object');
+    }
+    
+    const validatedData = req.body;
     
     for (const [key, value] of Object.entries(validatedData)) {
       // Auto-detect data type
@@ -1743,11 +1743,19 @@ app.all('/api/health*', async (req, res, next) => {
 
 // ==================== ERROR HANDLING ====================
 
+// JSON parsing error handler
+app.use((error, req, res, next) => {
+  if (error instanceof SyntaxError && 'body' in error) {
+    return next(boom.badRequest('Invalid JSON payload'));
+  }
+  next(error);
+});
+
 // Validation error handler
 app.use((error, req, res, next) => {
   if (error instanceof ZodError) {
     const boomError = boom.badRequest('Validation failed');
-    boomError.output.payload.details = error.errors;
+    boomError.output.payload.details = error.issues;
     return next(boomError);
   }
   next(error);
@@ -1767,7 +1775,9 @@ app.use((error, req, res, next) => {
       success: false,
       error: error.output.payload.message,
       ...(config.isDevelopment() && { 
-        stack: error.stack,
+        stack: error.stack
+      }),
+      ...(error.output.payload.details && { 
         details: error.output.payload.details 
       })
     });
