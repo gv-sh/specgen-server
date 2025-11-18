@@ -7,6 +7,8 @@ import sqlite3 from 'sqlite3';
 import axios from 'axios';
 import boom from '@hapi/boom';
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import path from 'path';
 import config from './config.js';
 
 // Check if Sharp is available
@@ -46,6 +48,12 @@ class DataService {
 
   async init() {
     return new Promise((resolve, reject) => {
+      // Ensure the database directory exists
+      const dbDir = path.dirname(this.dbPath);
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
+
       this.db = new sqlite3.Database(this.dbPath, async (err) => {
         if (err) {
           reject(boom.internal('Failed to connect to database', err));
