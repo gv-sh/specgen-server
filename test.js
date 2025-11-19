@@ -30,16 +30,8 @@ async function initTestDatabase() {
     // File might not exist, that's ok
   }
 
-  // Initialize new database
+  // Initialize new database (this will create schema automatically)
   await dataService.init();
-
-  // Create database schema using schema.js (same as production)
-  const statements = schema.getSchemaInitSQL();
-  for (const sql of statements) {
-    // Skip settings insert - we'll add test-specific settings
-    if (sql.includes('INSERT INTO settings')) continue;
-    await dataService.run(sql);
-  }
 
   // Create test categories
   await dataService.createCategory({

@@ -108,25 +108,33 @@ export const DEFAULT_SETTINGS = [
 
 /**
  * Generate CREATE TABLE statement for a table
+ * @param {string} tableName - Name of the table
+ * @param {boolean} ifNotExists - Add IF NOT EXISTS clause (default: false)
  */
-export function createTableSQL(tableName) {
+export function createTableSQL(tableName, ifNotExists = false) {
   const table = TABLES[tableName];
   if (!table) {
     throw new Error(`Table ${tableName} not found in schema`);
   }
 
-  return `CREATE TABLE ${table.name} (\n  ${table.columns.join(',\n  ')}\n)`;
+  const ifNotExistsClause = ifNotExists ? 'IF NOT EXISTS ' : '';
+  return `CREATE TABLE ${ifNotExistsClause}${table.name} (\n  ${table.columns.join(',\n  ')}\n)`;
 }
 
 /**
  * Generate all CREATE INDEX statements for a table
+ * @param {string} tableName - Name of the table
+ * @param {boolean} ifNotExists - Add IF NOT EXISTS clause (default: false)
  */
-export function createIndexesSQL(tableName) {
+export function createIndexesSQL(tableName, ifNotExists = false) {
   const table = TABLES[tableName];
   if (!table) {
     throw new Error(`Table ${tableName} not found in schema`);
   }
 
+  if (ifNotExists) {
+    return table.indexes.map(idx => idx.replace('CREATE INDEX', 'CREATE INDEX IF NOT EXISTS'));
+  }
   return table.indexes;
 }
 
@@ -165,8 +173,9 @@ export function getTableFields(tableName) {
 /**
  * Complete schema initialization script
  * Returns array of SQL statements to execute in order
+ * @param {boolean} ifNotExists - Add IF NOT EXISTS clauses (useful for tests)
  */
-export function getSchemaInitSQL() {
+export function getSchemaInitSQL(ifNotExists = false) {
   const statements = [];
 
   // Enable foreign keys
@@ -174,17 +183,19 @@ export function getSchemaInitSQL() {
 
   // Create tables in order
   getTableNames().forEach(tableName => {
-    statements.push(createTableSQL(tableName));
+    statements.push(createTableSQL(tableName, ifNotExists));
   });
 
   // Create indexes
   getTableNames().forEach(tableName => {
-    const indexes = createIndexesSQL(tableName);
+    const indexes = createIndexesSQL(tableName, ifNotExists);
     statements.push(...indexes);
   });
 
-  // Insert default settings
-  statements.push(insertDefaultSettingsSQL());
+  // Insert default settings (only if not using ifNotExists, to avoid duplicates)
+  if (!ifNotExists) {
+    statements.push(insertDefaultSettingsSQL());
+  }
 
   return statements;
 }
