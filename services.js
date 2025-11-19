@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
 import config from './config.js';
+import schema from './schema.js';
 
 // Check if Sharp is available
 let sharp = null;
@@ -87,79 +88,18 @@ class DataService {
   }
 
   /**
-   * Create complete database schema
+   * Create complete database schema using schema.js
    */
   async createDatabaseSchema() {
-    console.log('Creating database schema...');
+    console.log('Creating database schema from schema.js...');
 
-    // Categories table
-    await this.run(`
-      CREATE TABLE categories (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        description TEXT DEFAULT '',
-        sort_order INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+    // Get all SQL statements from schema
+    const statements = schema.getSchemaInitSQL();
 
-    // Parameters table
-    await this.run(`
-      CREATE TABLE parameters (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT DEFAULT '',
-        type TEXT NOT NULL CHECK(type IN ('select', 'text', 'number', 'boolean', 'range')),
-        category_id TEXT NOT NULL,
-        sort_order INTEGER DEFAULT 0,
-        parameter_values TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-      )
-    `);
-
-    // Generated content table
-    await this.run(`
-      CREATE TABLE generated_content (
-        id TEXT PRIMARY KEY,
-        title TEXT NOT NULL CHECK(length(title) <= 200),
-        fiction_content TEXT NOT NULL CHECK(length(fiction_content) <= 50000),
-        image_blob BLOB,
-        image_thumbnail BLOB,
-        prompt_data TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-
-    // Settings table
-    await this.run(`
-      CREATE TABLE settings (
-        key TEXT PRIMARY KEY,
-        value TEXT NOT NULL,
-        data_type TEXT DEFAULT 'string' CHECK(data_type IN ('string', 'number', 'boolean', 'json'))
-      )
-    `);
-
-    // Create essential indexes for performance
-    await this.run('CREATE INDEX idx_categories_name ON categories(name)');
-    await this.run('CREATE INDEX idx_categories_sort_order ON categories(sort_order)');
-    await this.run('CREATE INDEX idx_parameters_category_id ON parameters(category_id)');
-    await this.run('CREATE INDEX idx_parameters_type ON parameters(type)');
-    await this.run('CREATE INDEX idx_parameters_sort_order ON parameters(sort_order)');
-    await this.run('CREATE INDEX idx_content_created_at ON generated_content(created_at DESC)');
-
-    // Insert minimal default settings
-    await this.run(`
-      INSERT INTO settings (key, value, data_type) VALUES
-      ('app_version', '2.0.0', 'string'),
-      ('max_content_length', '10000', 'number'),
-      ('max_generations_per_session', '50', 'number'),
-      ('enable_image_generation', 'true', 'boolean'),
-      ('default_fiction_length', 'medium', 'string'),
-      ('rate_limit_per_minute', '10', 'number'),
-      ('maintenance_mode', 'false', 'boolean')
-    `);
+    // Execute each statement
+    for (const sql of statements) {
+      await this.run(sql);
+    }
 
     console.log('✅ Database schema created successfully');
   }
@@ -395,17 +335,21 @@ class DataService {
   // Content
   async saveGeneratedContent(contentData) {
     const id = uuidv4();
-    
+
     await this.run(
-      `INSERT INTO generated_content (id, title, fiction_content, image_blob, image_thumbnail, prompt_data)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO generated_content (id, title, fiction_content, image_blob, image_thumbnail, image_format, image_size_bytes, thumbnail_size_bytes, prompt_data, metadata)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         contentData.title,
         contentData.fiction_content,
         contentData.image_blob || null,
         contentData.image_thumbnail || null,
-        JSON.stringify(contentData.prompt_data || {})
+        contentData.image_format || 'png',
+        contentData.image_size_bytes || 0,
+        contentData.thumbnail_size_bytes || 0,
+        JSON.stringify(contentData.prompt_data || {}),
+        JSON.stringify(contentData.metadata || {})
       ]
     );
     return await this.getGeneratedContentById(id);
@@ -417,20 +361,22 @@ class DataService {
     return {
       ...content,
       prompt_data: JSON.parse(content.prompt_data),
+      metadata: content.metadata ? JSON.parse(content.metadata) : null,
       created_at: new Date(content.created_at)
     };
   }
 
   async getGeneratedContentForApi(id) {
     const content = await this.get(
-      'SELECT * FROM generated_content WHERE id = ?', 
+      'SELECT * FROM generated_content WHERE id = ?',
       [id]
     );
     if (!content) throw boom.notFound(`Content with id ${id} not found`);
-    
+
     const result = {
       ...content,
       prompt_data: JSON.parse(content.prompt_data),
+      metadata: content.metadata ? JSON.parse(content.metadata) : null,
       created_at: new Date(content.created_at)
     };
 
@@ -452,6 +398,7 @@ class DataService {
       const result = {
         ...item,
         prompt_data: JSON.parse(item.prompt_data),
+        metadata: item.metadata ? JSON.parse(item.metadata) : null,
         created_at: new Date(item.created_at)
       };
 
@@ -463,6 +410,25 @@ class DataService {
 
       return result;
     });
+  }
+
+  async updateGeneratedContent(id, updates) {
+    const existing = await this.getGeneratedContentById(id);
+
+    await this.run(
+      'UPDATE generated_content SET title = ? WHERE id = ?',
+      [
+        updates.title || existing.title,
+        id
+      ]
+    );
+    return await this.getGeneratedContentById(id);
+  }
+
+  async deleteGeneratedContent(id) {
+    const result = await this.run('DELETE FROM generated_content WHERE id = ?', [id]);
+    if (result.changes === 0) throw boom.notFound(`Content with id ${id} not found`);
+    return { success: true, message: 'Content deleted successfully' };
   }
 
   // Settings

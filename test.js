@@ -10,6 +10,7 @@ import fs from 'fs/promises';
 import app from './server.js';
 import { dataService } from './services.js';
 import config from './config.js';
+import schema from './schema.js';
 
 // Global jest for compatibility
 global.jest = jest;
@@ -29,54 +30,8 @@ async function initTestDatabase() {
     // File might not exist, that's ok
   }
 
-  // Initialize new database
+  // Initialize new database (this will create schema automatically)
   await dataService.init();
-
-  // Create database schema - minimal version matching services.js
-  await dataService.run(`
-    CREATE TABLE IF NOT EXISTS categories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE,
-      description TEXT DEFAULT '',
-      sort_order INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  await dataService.run(`
-    CREATE TABLE IF NOT EXISTS parameters (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      description TEXT DEFAULT '',
-      type TEXT NOT NULL CHECK(type IN ('select', 'text', 'number', 'boolean', 'range')),
-      category_id TEXT NOT NULL,
-      sort_order INTEGER DEFAULT 0,
-      parameter_values TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-    )
-  `);
-
-  await dataService.run(`
-    CREATE TABLE IF NOT EXISTS generated_content (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      fiction_content TEXT NOT NULL,
-      image_blob BLOB,
-      image_thumbnail BLOB,
-      prompt_data TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-
-  await dataService.run(`
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      data_type TEXT DEFAULT 'string' CHECK(data_type IN ('string', 'number', 'boolean', 'json'))
-    )
-  `);
 
   // Create test categories
   await dataService.createCategory({
@@ -503,22 +458,62 @@ describe('SpecGen Server - Content Management', () => {
     expect(response.body.success).toBe(false);
   });
 
-  test('PUT /api/content/:id - Should return not implemented', async () => {
+  test('PUT /api/content/:id - Should update content title', async () => {
+    // First create some content
+    const contentData = {
+      title: 'Original Title',
+      fiction_content: 'Test story content',
+      prompt_data: { test: 'data' },
+      metadata: {}
+    };
+    const savedContent = await dataService.saveGeneratedContent(contentData);
+
+    // Update the title
     const response = await request(app)
-      .put('/api/content/some-id')
+      .put(`/api/content/${savedContent.id}`)
       .send({ title: 'Updated Title' });
-    
-    expect(response.status).toBe(501);
-    expect(response.body.success).toBe(false);
-    expect(response.body.error).toContain('not yet implemented');
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.title).toBe('Updated Title');
   });
 
-  test('DELETE /api/content/:id - Should return not implemented', async () => {
-    const response = await request(app).delete('/api/content/some-id');
-    
-    expect(response.status).toBe(501);
+  test('PUT /api/content/:id - Should return 404 for non-existent content', async () => {
+    const response = await request(app)
+      .put('/api/content/non-existent-id')
+      .send({ title: 'Updated Title' });
+
+    expect(response.status).toBe(404);
     expect(response.body.success).toBe(false);
-    expect(response.body.error).toContain('not yet implemented');
+  });
+
+  test('DELETE /api/content/:id - Should delete content', async () => {
+    // First create some content
+    const contentData = {
+      title: 'Test Title',
+      fiction_content: 'Test story content',
+      prompt_data: { test: 'data' },
+      metadata: {}
+    };
+    const savedContent = await dataService.saveGeneratedContent(contentData);
+
+    // Delete it
+    const response = await request(app).delete(`/api/content/${savedContent.id}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.message).toContain('deleted successfully');
+
+    // Verify it's gone
+    const getResponse = await request(app).get(`/api/content/${savedContent.id}`);
+    expect(getResponse.status).toBe(404);
+  });
+
+  test('DELETE /api/content/:id - Should return 404 for non-existent content', async () => {
+    const response = await request(app).delete('/api/content/non-existent-id');
+
+    expect(response.status).toBe(404);
+    expect(response.body.success).toBe(false);
   });
 });
 

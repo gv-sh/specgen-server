@@ -75,9 +75,11 @@ const generationRequestSchema = z.object({
 });
 
 const contentUpdateSchema = z.object({
-  title: z.string().min(1).max(config.get('validation.maxTitleLength')).optional(),
-  status: z.enum(['draft', 'published', 'archived']).optional()
-});
+  title: z.string().min(1).max(config.get('validation.maxTitleLength')).optional()
+}).refine(
+  (data) => Object.keys(data).length > 0,
+  'At least one field is required for update'
+);
 
 // Query schemas
 const contentFiltersSchema = z.object({
@@ -1022,15 +1024,12 @@ app.put('/api/admin/settings', async (req, res, next) => {
  *                     image_thumbnail_url:
  *                       type: string
  *                       example: "/api/images/uuid-string/thumbnail"
- *                     image_prompt:
- *                       type: string
- *                       example: "Futuristic space station with advanced AI..."
- *                     word_count:
- *                       type: number
- *                       example: 245
- *                     generation_time:
- *                       type: number
- *                       example: 3500
+ *                     prompt_data:
+ *                       type: object
+ *                       description: Parameters used to generate this content
+ *                     metadata:
+ *                       type: object
+ *                       description: Generation metadata (model info, tokens, etc.)
  *       500:
  *         description: Generation failed
  *         content:
@@ -1064,11 +1063,8 @@ app.post('/api/generate', async (req, res, next) => {
       image_format: result.imageFormat || 'png',
       image_size_bytes: result.imageSizeBytes || 0,
       thumbnail_size_bytes: result.thumbnailSizeBytes || 0,
-      image_prompt: result.imagePrompt,
       prompt_data: parameters,
-      metadata: result.metadata,
-      generation_time: Date.now() - startTime,
-      word_count: result.wordCount || 0
+      metadata: result.metadata
     };
 
     const savedContent = await dataService.saveGeneratedContent(contentData);
@@ -1130,9 +1126,9 @@ app.post('/api/generate', async (req, res, next) => {
  *                       image_thumbnail_url:
  *                         type: string
  *                         example: "/api/images/uuid-string/thumbnail"
- *                       word_count:
- *                         type: number
- *                         example: 245
+ *                       prompt_data:
+ *                         type: object
+ *                         description: Parameters used to generate this content
  *                       created_at:
  *                         type: string
  *                         format: date-time
@@ -1188,9 +1184,6 @@ app.get('/api/content', async (req, res, next) => {
  *                     recent_content:
  *                       type: number
  *                       example: 5
- *                     avg_word_count:
- *                       type: number
- *                       example: 245
  */
 app.get('/api/content/summary', async (req, res, next) => {
   try {
@@ -1203,7 +1196,6 @@ app.get('/api/content/summary', async (req, res, next) => {
       id: item.id,
       title: item.title,
       content_type: item.content_type,
-      word_count: item.word_count,
       created_at: item.created_at
     }));
     
@@ -1351,9 +1343,9 @@ app.get('/api/images/:id/thumbnail', async (req, res, next) => {
  *                     image_thumbnail_url:
  *                       type: string
  *                       example: "/api/images/uuid-string/thumbnail"
- *                     word_count:
- *                       type: number
- *                       example: 245
+ *                     prompt_data:
+ *                       type: object
+ *                       description: Parameters used to generate this content
  *       404:
  *         description: Content not found
  */
@@ -1371,17 +1363,22 @@ app.get('/api/content/:id/image', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
     const content = await dataService.getGeneratedContentById(id);
-    
-    if (!content.image_url) {
+
+    if (!content.image_blob && !content.image_url) {
       throw boom.notFound('Image not found');
     }
 
-    res.json({ 
-      success: true, 
-      data: { 
-        imageUrl: content.image_url,
-        imagePrompt: content.image_prompt
-      } 
+    const responseData = {};
+    if (content.image_blob) {
+      responseData.imageOriginalUrl = `/api/images/${id}/original`;
+      responseData.imageThumbnailUrl = `/api/images/${id}/thumbnail`;
+    } else if (content.image_url) {
+      responseData.imageUrl = content.image_url;
+    }
+
+    res.json({
+      success: true,
+      data: responseData
     });
   } catch (error) {
     next(error);
@@ -1392,7 +1389,7 @@ app.get('/api/content/:id/image', async (req, res, next) => {
  * @swagger
  * /api/content/{id}:
  *   put:
- *     summary: Update generated content (Not yet implemented)
+ *     summary: Update generated content
  *     tags: [Content]
  *     parameters:
  *       - name: id
@@ -1411,10 +1408,16 @@ app.get('/api/content/:id/image', async (req, res, next) => {
  *             properties:
  *               title:
  *                 type: string
- *                 example: "Updated Title"
+ *                 maxLength: 200
+ *                 example: "Updated Story Title"
+ *           examples:
+ *             update-title:
+ *               summary: Update Title
+ *               value:
+ *                 title: "The Quantum Paradox - Revised Edition"
  *     responses:
- *       501:
- *         description: Not yet implemented
+ *       200:
+ *         description: Content updated successfully
  *         content:
  *           application/json:
  *             schema:
@@ -1422,16 +1425,21 @@ app.get('/api/content/:id/image', async (req, res, next) => {
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Content updates are not yet implemented"
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   description: Updated content object
+ *       404:
+ *         description: Content not found
+ *       400:
+ *         description: Validation failed
  */
 app.put('/api/content/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
     const updates = contentUpdateSchema.parse(req.body);
-    throw boom.notImplemented('Content updates not yet implemented');
+    const content = await dataService.updateGeneratedContent(id, updates);
+    res.json({ success: true, data: content });
   } catch (error) {
     next(error);
   }
@@ -1441,7 +1449,7 @@ app.put('/api/content/:id', async (req, res, next) => {
  * @swagger
  * /api/content/{id}:
  *   delete:
- *     summary: Delete generated content (Not yet implemented)
+ *     summary: Delete generated content
  *     tags: [Content]
  *     parameters:
  *       - name: id
@@ -1452,8 +1460,21 @@ app.put('/api/content/:id', async (req, res, next) => {
  *           type: string
  *         example: "uuid-string"
  *     responses:
- *       501:
- *         description: Not yet implemented
+ *       200:
+ *         description: Content deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Content deleted successfully"
+ *       404:
+ *         description: Content not found
  *         content:
  *           application/json:
  *             schema:
@@ -1464,12 +1485,13 @@ app.put('/api/content/:id', async (req, res, next) => {
  *                   example: false
  *                 error:
  *                   type: string
- *                   example: "Content deletion is not yet implemented"
+ *                   example: "Content with id uuid-string not found"
  */
 app.delete('/api/content/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    throw boom.notImplemented('Content deletion not yet implemented');
+    const result = await dataService.deleteGeneratedContent(id);
+    res.json(result);
   } catch (error) {
     next(error);
   }
