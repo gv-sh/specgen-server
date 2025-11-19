@@ -10,6 +10,7 @@ import fs from 'fs/promises';
 import app from './server.js';
 import { dataService } from './services.js';
 import config from './config.js';
+import schema from './schema.js';
 
 // Global jest for compatibility
 global.jest = jest;
@@ -32,51 +33,13 @@ async function initTestDatabase() {
   // Initialize new database
   await dataService.init();
 
-  // Create database schema - minimal version matching services.js
-  await dataService.run(`
-    CREATE TABLE IF NOT EXISTS categories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE,
-      description TEXT DEFAULT '',
-      sort_order INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-  await dataService.run(`
-    CREATE TABLE IF NOT EXISTS parameters (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      description TEXT DEFAULT '',
-      type TEXT NOT NULL CHECK(type IN ('select', 'text', 'number', 'boolean', 'range')),
-      category_id TEXT NOT NULL,
-      sort_order INTEGER DEFAULT 0,
-      parameter_values TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-    )
-  `);
-
-  await dataService.run(`
-    CREATE TABLE IF NOT EXISTS generated_content (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      fiction_content TEXT NOT NULL,
-      image_blob BLOB,
-      image_thumbnail BLOB,
-      prompt_data TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-
-
-  await dataService.run(`
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      data_type TEXT DEFAULT 'string' CHECK(data_type IN ('string', 'number', 'boolean', 'json'))
-    )
-  `);
+  // Create database schema using schema.js (same as production)
+  const statements = schema.getSchemaInitSQL();
+  for (const sql of statements) {
+    // Skip settings insert - we'll add test-specific settings
+    if (sql.includes('INSERT INTO settings')) continue;
+    await dataService.run(sql);
+  }
 
   // Create test categories
   await dataService.createCategory({

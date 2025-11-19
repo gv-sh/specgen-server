@@ -1022,15 +1022,12 @@ app.put('/api/admin/settings', async (req, res, next) => {
  *                     image_thumbnail_url:
  *                       type: string
  *                       example: "/api/images/uuid-string/thumbnail"
- *                     image_prompt:
- *                       type: string
- *                       example: "Futuristic space station with advanced AI..."
- *                     word_count:
- *                       type: number
- *                       example: 245
- *                     generation_time:
- *                       type: number
- *                       example: 3500
+ *                     prompt_data:
+ *                       type: object
+ *                       description: Parameters used to generate this content
+ *                     metadata:
+ *                       type: object
+ *                       description: Generation metadata (model info, tokens, etc.)
  *       500:
  *         description: Generation failed
  *         content:
@@ -1064,11 +1061,8 @@ app.post('/api/generate', async (req, res, next) => {
       image_format: result.imageFormat || 'png',
       image_size_bytes: result.imageSizeBytes || 0,
       thumbnail_size_bytes: result.thumbnailSizeBytes || 0,
-      image_prompt: result.imagePrompt,
       prompt_data: parameters,
-      metadata: result.metadata,
-      generation_time: Date.now() - startTime,
-      word_count: result.wordCount || 0
+      metadata: result.metadata
     };
 
     const savedContent = await dataService.saveGeneratedContent(contentData);
@@ -1130,9 +1124,9 @@ app.post('/api/generate', async (req, res, next) => {
  *                       image_thumbnail_url:
  *                         type: string
  *                         example: "/api/images/uuid-string/thumbnail"
- *                       word_count:
- *                         type: number
- *                         example: 245
+ *                       prompt_data:
+ *                         type: object
+ *                         description: Parameters used to generate this content
  *                       created_at:
  *                         type: string
  *                         format: date-time
@@ -1188,9 +1182,6 @@ app.get('/api/content', async (req, res, next) => {
  *                     recent_content:
  *                       type: number
  *                       example: 5
- *                     avg_word_count:
- *                       type: number
- *                       example: 245
  */
 app.get('/api/content/summary', async (req, res, next) => {
   try {
@@ -1203,7 +1194,6 @@ app.get('/api/content/summary', async (req, res, next) => {
       id: item.id,
       title: item.title,
       content_type: item.content_type,
-      word_count: item.word_count,
       created_at: item.created_at
     }));
     
@@ -1351,9 +1341,9 @@ app.get('/api/images/:id/thumbnail', async (req, res, next) => {
  *                     image_thumbnail_url:
  *                       type: string
  *                       example: "/api/images/uuid-string/thumbnail"
- *                     word_count:
- *                       type: number
- *                       example: 245
+ *                     prompt_data:
+ *                       type: object
+ *                       description: Parameters used to generate this content
  *       404:
  *         description: Content not found
  */
@@ -1371,17 +1361,22 @@ app.get('/api/content/:id/image', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
     const content = await dataService.getGeneratedContentById(id);
-    
-    if (!content.image_url) {
+
+    if (!content.image_blob && !content.image_url) {
       throw boom.notFound('Image not found');
     }
 
-    res.json({ 
-      success: true, 
-      data: { 
-        imageUrl: content.image_url,
-        imagePrompt: content.image_prompt
-      } 
+    const responseData = {};
+    if (content.image_blob) {
+      responseData.imageOriginalUrl = `/api/images/${id}/original`;
+      responseData.imageThumbnailUrl = `/api/images/${id}/thumbnail`;
+    } else if (content.image_url) {
+      responseData.imageUrl = content.image_url;
+    }
+
+    res.json({
+      success: true,
+      data: responseData
     });
   } catch (error) {
     next(error);
