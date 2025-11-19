@@ -412,6 +412,25 @@ class DataService {
     });
   }
 
+  async updateGeneratedContent(id, updates) {
+    const existing = await this.getGeneratedContentById(id);
+
+    await this.run(
+      'UPDATE generated_content SET title = ? WHERE id = ?',
+      [
+        updates.title || existing.title,
+        id
+      ]
+    );
+    return await this.getGeneratedContentById(id);
+  }
+
+  async deleteGeneratedContent(id) {
+    const result = await this.run('DELETE FROM generated_content WHERE id = ?', [id]);
+    if (result.changes === 0) throw boom.notFound(`Content with id ${id} not found`);
+    return { success: true, message: 'Content deleted successfully' };
+  }
+
   // Settings
   async getSetting(key) {
     const setting = await this.get('SELECT * FROM settings WHERE key = ?', [key]);

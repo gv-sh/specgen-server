@@ -466,22 +466,62 @@ describe('SpecGen Server - Content Management', () => {
     expect(response.body.success).toBe(false);
   });
 
-  test('PUT /api/content/:id - Should return not implemented', async () => {
+  test('PUT /api/content/:id - Should update content title', async () => {
+    // First create some content
+    const contentData = {
+      title: 'Original Title',
+      fiction_content: 'Test story content',
+      prompt_data: { test: 'data' },
+      metadata: {}
+    };
+    const savedContent = await dataService.saveGeneratedContent(contentData);
+
+    // Update the title
     const response = await request(app)
-      .put('/api/content/some-id')
+      .put(`/api/content/${savedContent.id}`)
       .send({ title: 'Updated Title' });
-    
-    expect(response.status).toBe(501);
-    expect(response.body.success).toBe(false);
-    expect(response.body.error).toContain('not yet implemented');
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.title).toBe('Updated Title');
   });
 
-  test('DELETE /api/content/:id - Should return not implemented', async () => {
-    const response = await request(app).delete('/api/content/some-id');
-    
-    expect(response.status).toBe(501);
+  test('PUT /api/content/:id - Should return 404 for non-existent content', async () => {
+    const response = await request(app)
+      .put('/api/content/non-existent-id')
+      .send({ title: 'Updated Title' });
+
+    expect(response.status).toBe(404);
     expect(response.body.success).toBe(false);
-    expect(response.body.error).toContain('not yet implemented');
+  });
+
+  test('DELETE /api/content/:id - Should delete content', async () => {
+    // First create some content
+    const contentData = {
+      title: 'Test Title',
+      fiction_content: 'Test story content',
+      prompt_data: { test: 'data' },
+      metadata: {}
+    };
+    const savedContent = await dataService.saveGeneratedContent(contentData);
+
+    // Delete it
+    const response = await request(app).delete(`/api/content/${savedContent.id}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.message).toContain('deleted successfully');
+
+    // Verify it's gone
+    const getResponse = await request(app).get(`/api/content/${savedContent.id}`);
+    expect(getResponse.status).toBe(404);
+  });
+
+  test('DELETE /api/content/:id - Should return 404 for non-existent content', async () => {
+    const response = await request(app).delete('/api/content/non-existent-id');
+
+    expect(response.status).toBe(404);
+    expect(response.body.success).toBe(false);
   });
 });
 

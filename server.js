@@ -75,9 +75,11 @@ const generationRequestSchema = z.object({
 });
 
 const contentUpdateSchema = z.object({
-  title: z.string().min(1).max(config.get('validation.maxTitleLength')).optional(),
-  status: z.enum(['draft', 'published', 'archived']).optional()
-});
+  title: z.string().min(1).max(config.get('validation.maxTitleLength')).optional()
+}).refine(
+  (data) => Object.keys(data).length > 0,
+  'At least one field is required for update'
+);
 
 // Query schemas
 const contentFiltersSchema = z.object({
@@ -1387,7 +1389,7 @@ app.get('/api/content/:id/image', async (req, res, next) => {
  * @swagger
  * /api/content/{id}:
  *   put:
- *     summary: Update generated content (Not yet implemented)
+ *     summary: Update generated content
  *     tags: [Content]
  *     parameters:
  *       - name: id
@@ -1406,10 +1408,16 @@ app.get('/api/content/:id/image', async (req, res, next) => {
  *             properties:
  *               title:
  *                 type: string
- *                 example: "Updated Title"
+ *                 maxLength: 200
+ *                 example: "Updated Story Title"
+ *           examples:
+ *             update-title:
+ *               summary: Update Title
+ *               value:
+ *                 title: "The Quantum Paradox - Revised Edition"
  *     responses:
- *       501:
- *         description: Not yet implemented
+ *       200:
+ *         description: Content updated successfully
  *         content:
  *           application/json:
  *             schema:
@@ -1417,16 +1425,21 @@ app.get('/api/content/:id/image', async (req, res, next) => {
  *               properties:
  *                 success:
  *                   type: boolean
- *                   example: false
- *                 error:
- *                   type: string
- *                   example: "Content updates are not yet implemented"
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   description: Updated content object
+ *       404:
+ *         description: Content not found
+ *       400:
+ *         description: Validation failed
  */
 app.put('/api/content/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
     const updates = contentUpdateSchema.parse(req.body);
-    throw boom.notImplemented('Content updates not yet implemented');
+    const content = await dataService.updateGeneratedContent(id, updates);
+    res.json({ success: true, data: content });
   } catch (error) {
     next(error);
   }
@@ -1436,7 +1449,7 @@ app.put('/api/content/:id', async (req, res, next) => {
  * @swagger
  * /api/content/{id}:
  *   delete:
- *     summary: Delete generated content (Not yet implemented)
+ *     summary: Delete generated content
  *     tags: [Content]
  *     parameters:
  *       - name: id
@@ -1447,8 +1460,21 @@ app.put('/api/content/:id', async (req, res, next) => {
  *           type: string
  *         example: "uuid-string"
  *     responses:
- *       501:
- *         description: Not yet implemented
+ *       200:
+ *         description: Content deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Content deleted successfully"
+ *       404:
+ *         description: Content not found
  *         content:
  *           application/json:
  *             schema:
@@ -1459,12 +1485,13 @@ app.put('/api/content/:id', async (req, res, next) => {
  *                   example: false
  *                 error:
  *                   type: string
- *                   example: "Content deletion is not yet implemented"
+ *                   example: "Content with id uuid-string not found"
  */
 app.delete('/api/content/:id', async (req, res, next) => {
   try {
     const { id } = idParamSchema.parse(req.params);
-    throw boom.notImplemented('Content deletion not yet implemented');
+    const result = await dataService.deleteGeneratedContent(id);
+    res.json(result);
   } catch (error) {
     next(error);
   }
